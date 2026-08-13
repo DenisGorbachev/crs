@@ -2069,8 +2069,8 @@ resolver = "3"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.93.1"
-homepage = "https://github.com/DenisGorbachev/rust-pre-public-cli-template"
-repository = "https://github.com/DenisGorbachev/rust-pre-public-cli-template"
+homepage = "https://github.com/DenisGorbachev/crs"
+repository = "https://github.com/DenisGorbachev/crs"
 keywords = []
 categories = []
 exclude = [
@@ -2093,8 +2093,8 @@ exclude = [
 ]
 
 [workspace.metadata.details]
-name = "rust-pre-public-cli-template"
-title = "Rust pre-public CLI template"
+name = "crs"
+title = "Code review system"
 readme = { generate = false }
 
 [workspace.lints.rust]
@@ -2108,11 +2108,10 @@ absolute_paths = "deny"
 arithmetic_side_effects = "deny"
 
 [package]
-name = "rust-pre-public-cli-template"
+name = "crs"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "A template for creating Rust pre-public CLI apps with Clap."
 homepage.workspace = true
 repository.workspace = true
 keywords.workspace = true
@@ -2120,7 +2119,7 @@ categories.workspace = true
 exclude.workspace = true
 
 [package.metadata.details]
-title = "Rust pre-public CLI template"
+title = ""
 
 [lints]
 workspace = true
@@ -2148,8 +2147,8 @@ tokio = { version = "1.39.2", features = ["macros", "fs", "net", "rt", "rt-multi
 if_missing = "error"
 
 [providers]
-keychain = { type = "keychain", service = "rust-pre-public-cli-template" }
-pass = { type = "password-store", prefix = "rust-pre-public-cli-template/" }
+keychain = { type = "keychain", service = "crs" }
+pass = { type = "password-store", prefix = "crs/" }
 ```
 
 #### src/lib.rs
@@ -2166,8 +2165,8 @@ pub use command::*;
 
 ```rust
 use clap::Parser;
+use crs::Command;
 use errgonomic::exit_result;
-use rust_pre_public_cli_template::Command;
 use std::process::ExitCode;
 
 #[tokio::main]
