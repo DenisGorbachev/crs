@@ -13,6 +13,7 @@
 use tokio::process::Command;
 use globset::Glob;
 use save_load::Format;
+use fjall::SingleWriterTxDatabase;
 ```
 
 ## crs package
@@ -25,9 +26,11 @@ use save_load::Format;
 
 - Must have fields:
   - `config: PathBuf`
+  - `db: PathBuf`
 - Must have methods:
   - `run`
     - `let config = Format::load_one_as(&config)`
+    - `let db = SingleWriterTxDatabase::open(db_config)`
 
 ### struct ShowCommand
 
@@ -85,5 +88,18 @@ use save_load::Format;
 
 ### struct GitRepoApproval
 
+- Must be an [archived struct](#archived-struct)
 - Must have fields:
-  - 
+  - `commits: FxHashMap<GitCommitHash, GitCommitApproval>`
+
+### struct GitCommitApproval
+
+- Must have fields:
+  - `paths: FxHashMap<PathBuf, FxHashMap<UserId, Timestamp>>`
+
+### Archived struct
+
+- Must have derives:
+  - `rkyv::Archive`
+  - `rkyv::Serialize`
+  - `rkyv::Deserialize`

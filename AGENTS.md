@@ -719,6 +719,7 @@ Proxy command example:
 use tokio::process::Command;
 use globset::Glob;
 use save_load::Format;
+use fjall::SingleWriterTxDatabase;
 ```
 
 #### crs package
@@ -731,9 +732,11 @@ use save_load::Format;
 
 - Must have fields:
   - `config: PathBuf`
+  - `db: PathBuf`
 - Must have methods:
   - `run`
     - `let config = Format::load_one_as(&config)`
+    - `let db = SingleWriterTxDatabase::open(db_config)`
 
 ##### struct ShowCommand
 
@@ -791,7 +794,21 @@ use save_load::Format;
 
 ##### struct GitRepoApproval
 
-- #### Must have fields:
+- Must be an [archived struct](#archived-struct)
+- Must have fields:
+  - `commits: FxHashMap<GitCommitHash, GitCommitApproval>`
+
+##### struct GitCommitApproval
+
+- Must have fields:
+  - `paths: FxHashMap<PathBuf, FxHashMap<UserId, Timestamp>>`
+
+##### Archived struct
+
+- Must have derives:
+  - `rkyv::Archive`
+  - `rkyv::Serialize`
+  - `rkyv::Deserialize`
 
 ### Error handling
 
@@ -2492,16 +2509,19 @@ derive-getters = { version = "0.5.0", features = ["auto_copy_getters"] }
 derive-new = "0.7.0"
 derive_more = { version = "2.1.1", features = ["full"] }
 errgonomic = { git = "https://github.com/DenisGorbachev/errgonomic" }
-itertools = "0.14.0"
+itertools = "0.15.0"
 standard-traits = { git = "https://github.com/DenisGorbachev/standard-traits" }
-strum = { version = "0.27.2", features = ["derive"] }
-stub-macro = { version = "0.2.1" }
+strum = { version = "0.28.0", features = ["derive"] }
+stub-macro = { version = "0.3.1" }
 subtype = { git = "https://github.com/DenisGorbachev/subtype" }
 thiserror = "2.0.17"
 tokio = { version = "1.39.2", features = ["macros", "fs", "net", "rt", "rt-multi-thread"] }
 futures = { version = "0.3.34" }
 save-load = { git = "https://github.com/DenisGorbachev/save-load", features = ["clap", "serde_json", "serde_yaml", "toml"] }
 git2 = "0.21.0"
+timestamp-please = { git = "https://github.com/DenisGorbachev/timestamp-please", features = ["serde", "time"] }
+fjall = { version = "3.1.10" }
+rkyv = { version = "0.8.16", features = ["unaligned"] }
 ```
 
 #### spec/Cargo.toml
