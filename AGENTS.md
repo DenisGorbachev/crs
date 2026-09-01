@@ -599,6 +599,8 @@ fn verify_cli() {
 ##### File `src/command.rs`
 
 - Must define a [command-like struct](#command-like-struct) named `Command`
+  - Must have attributes:
+    - `#[command(author, version, about, propagate_version = true, flatten_help = true, disable_help_subcommand = true)]`
 - Must define a [subcommand-like enum](#subcommand-like-enum) named `Subcommand`
 
 Example:
@@ -610,7 +612,7 @@ use errgonomic::map_err;
 use thiserror::Error;
 
 #[derive(clap::Parser, Debug)]
-#[command(author, version, about, propagate_version = true)]
+#[command(author, version, about, propagate_version = true, flatten_help = true, disable_help_subcommand = true)]
 pub struct Command {
     #[command(subcommand)]
     subcommand: Subcommand,
@@ -651,7 +653,13 @@ pub use print_command::*;
 A struct that contains fields for CLI arguments.
 
 - Must have a name that is a concatenation of all command names leading up to and including this command name, and ends with `Command` (see example above)
-- Must derive `clap::Parser`
+- Must have at least the following attributes:
+  - `derive`
+    - Must contain at least:
+      - `Parser` (`use clap::Parser`)
+  - `command`
+    - Must contain at least:
+      - `flatten_help = true`
 - Must be attached to a parent module: if it's a top-level command: `src/lib.rs`, else: `src/command.rs`
 - For each field:
   - If the field has a collection type (e.g. `Vec`), then it must have attribute `num_args = 1..`
@@ -671,7 +679,10 @@ Command example:
 An enum that contains variants for CLI subcommands.
 
 - Must have a name that is a concatenation of all command names leading up to and including this command name, and ends with `Subcommand` (see example above)
-- Must derive `clap::Subcommand`
+- Must have at least the following attributes:
+  - `derive`
+    - Must contain at least:
+      - `Subcommand` (`use clap::Subcommand`)
 - Must be located in the same file as its parent command struct
 - Each variant must be a tuple variant containing exactly one command
 
@@ -688,6 +699,26 @@ Proxy command example:
 
 - Name: `DbCommand`
 - File: `src/command/db_command.rs` (attached to `src/command.rs`)
+
+### crs
+
+#### Decisions
+
+- How to deal with file-level changes that are not tied to a specific code item?
+  - Examples:
+    - Adding `#![no_std]`
+- How to deal with inter-dependent code items?
+
+#### crs package
+
+##### ShowCommand
+
+- Must have methods:
+  - `run`
+    - Must find the first review item that is not approved but whose dependencies are approved
+      - Must descend into the first unapproved unseen dependency
+        - Notes:
+          - The "unseen" check is needed because two Rust code items can be inter-dependent
 
 ### Error handling
 
@@ -2129,6 +2160,7 @@ cfg_if::cfg_if! {
 
 ```shell
 origin
+repoconf-rust-pre-public-cli-template
 ```
 
 ### Project files
@@ -2306,8 +2338,8 @@ if_missing = "error"
 env = "exec"
 
 [providers]
-keychain = { type = "keychain", service = "rust-private-lib-template" }
-pass = { type = "password-store", prefix = "rust-private-lib-template/" }
+keychain = { type = "keychain", service = "crs" }
+pass = { type = "password-store", prefix = "crs/" }
 age = { type = "age", recipients = [
     "age1sf4r4amev2svqr6llwg8hgtz9n7p5qdh7hh0mavcshzfrmgfduksnq3hql",
     "age1605gsnxpe536sprwccyumq74veg0g80u55n8ggems0t8deau6qdsfnq3m3"
@@ -2393,18 +2425,6 @@ stub-macro = { version = "0.2.1" }
 subtype = { git = "https://github.com/DenisGorbachev/subtype" }
 thiserror = "2.0.17"
 tokio = { version = "1.39.2", features = ["macros", "fs", "net", "rt", "rt-multi-thread"] }
-```
-
-#### fnox.toml
-
-```toml
-#:schema https://fnox.jdx.dev/schema.json
-
-if_missing = "error"
-
-[providers]
-keychain = { type = "keychain", service = "crs" }
-pass = { type = "password-store", prefix = "crs/" }
 ```
 
 #### src/lib.rs
