@@ -713,16 +713,72 @@ Proxy command example:
     - Adding `#![no_std]`
 - How to deal with inter-dependent code items?
 
+#### Idents
+
+```rust
+use tokio::process::Command;
+use globset::Glob;
+use save_load::Format;
+```
+
 #### crs package
 
-##### ShowCommand
+- Must have dependencies:
+  - `globset`
+  - `save-load`
 
+##### struct Command
+
+- Must have fields:
+  - `config: PathBuf`
 - Must have methods:
   - `run`
+    - `let config = Format::load_one_as(&config)`
+
+##### struct ShowCommand
+
+- Must have methods:
+  - `run(config: &Config)`
+    - Must iterate `config.sources()`
     - Must find the first review item that is not approved but whose dependencies are approved
       - Must descend into the first unapproved unseen dependency
         - Notes:
           - The "unseen" check is needed because two Rust code items can be inter-dependent
+
+##### struct Config
+
+- Must have fields:
+  - `sources: Vec<Source>`
+
+##### enum Source
+
+- Must have variants:
+  - `GitRepo(GitRepoSource)`
+  - `Codex(CodexSource)`
+
+##### impl SourceLike for Source
+
+- Must delegate to the `impl SourceLike` of corresponding variant
+
+##### enum GitRepoSource
+
+- Must have variants:
+  - `Path(PathBuf)`
+  - `Glob(Glob)`
+
+##### impl SourceLike for GitRepoSource
+
+##### struct CodexSource
+
+- Must have fields:
+  - `home: PathBuf`
+- Must have methods:
+  - `command(&self)`
+    - Must have output inner type: `Command`
+    - Must construct a `codex` command
+      - Must set `CODEX_HOME` var to `self.home`
+
+##### impl SourceLike for CodexSource
 
 ### Error handling
 
@@ -2430,6 +2486,8 @@ stub-macro = { version = "0.2.1" }
 subtype = { git = "https://github.com/DenisGorbachev/subtype" }
 thiserror = "2.0.17"
 tokio = { version = "1.39.2", features = ["macros", "fs", "net", "rt", "rt-multi-thread"] }
+futures = { version = "0.3.34" }
+save-load = { git = "https://github.com/DenisGorbachev/save-load", features = ["clap", "serde_json", "serde_yaml", "toml"] }
 ```
 
 #### spec/Cargo.toml
@@ -2463,11 +2521,15 @@ pub use facts::*;
 #### src/lib.rs
 
 ```rust
-//! This is a module-level comment for a Rust lib
+#![allow(async_fn_in_trait)]
 
 mod command;
 
 pub use command::*;
+
+mod traits;
+
+pub use traits::*;
 ```
 
 #### src/main.rs

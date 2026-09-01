@@ -1,5 +1,9 @@
-//! This is a module-level comment for a Rust lib
+#![allow(async_fn_in_trait)]
 
 mod command;
 
 pub use command::*;
+
+mod traits;
+
+pub use traits::*;
