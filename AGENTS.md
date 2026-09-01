@@ -2442,6 +2442,7 @@ age = { type = "age", recipients = [
 [workspace]
 resolver = "3"
 members = ["spec"]
+# "spec" must be a workspace member because mise tasks run only on the top-level workspace
 
 [workspace.package]
 version = "0.1.0"
