@@ -377,6 +377,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "spec"
+version = "0.1.0"
+
+[[package]]
 name = "standard-traits"
 version = "0.1.0"
 source = "git+https://github.com/DenisGorbachev/standard-traits#bc0b8a3fcbd3d688f06efbd4bb0b8a7798ac2867"

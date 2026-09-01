@@ -2351,6 +2351,7 @@ age = { type = "age", recipients = [
 ```toml
 [workspace]
 resolver = "3"
+members = ["spec"]
 
 [workspace.package]
 version = "0.1.0"
@@ -2425,6 +2426,34 @@ stub-macro = { version = "0.2.1" }
 subtype = { git = "https://github.com/DenisGorbachev/subtype" }
 thiserror = "2.0.17"
 tokio = { version = "1.39.2", features = ["macros", "fs", "net", "rt", "rt-multi-thread"] }
+```
+
+#### spec/Cargo.toml
+
+```toml
+[package]
+name = "spec"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+exclude.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true
+```
+
+#### spec/src/lib.rs
+
+```rust
+mod facts;
+
+pub use facts::*;
 ```
 
 #### src/lib.rs
