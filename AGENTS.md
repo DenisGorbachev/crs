@@ -765,8 +765,17 @@ use save_load::Format;
 - Must have variants:
   - `Path(PathBuf)`
   - `Glob(Glob)`
+- Must have methods:
+  - `repos(&self) -> Result<impl Iterator<Item = Result<Repository, GitError>>, GitRepoSourceReposError>`
 
 ##### impl SourceLike for GitRepoSource
+
+- Must have methods:
+  - `review_items`
+    - Must iterate `repos`
+      - Must iterate branches
+        - Must iterate commits in reverse order (latest commit first)
+          - Must get the first unapproved path within a commit
 
 ##### struct CodexSource
 
@@ -779,6 +788,10 @@ use save_load::Format;
       - Must set `CODEX_HOME` var to `self.home`
 
 ##### impl SourceLike for CodexSource
+
+##### struct GitRepoApproval
+
+- #### Must have fields:
 
 ### Error handling
 
@@ -2488,6 +2501,7 @@ thiserror = "2.0.17"
 tokio = { version = "1.39.2", features = ["macros", "fs", "net", "rt", "rt-multi-thread"] }
 futures = { version = "0.3.34" }
 save-load = { git = "https://github.com/DenisGorbachev/save-load", features = ["clap", "serde_json", "serde_yaml", "toml"] }
+git2 = "0.21.0"
 ```
 
 #### spec/Cargo.toml
@@ -2505,6 +2519,7 @@ categories.workspace = true
 exclude.workspace = true
 
 [dependencies]
+strum = { version = "0.28.0", features = ["derive"] }
 
 [lints]
 workspace = true
@@ -2516,6 +2531,8 @@ workspace = true
 mod facts;
 
 pub use facts::*;
+mod types;
+pub use types::*;
 ```
 
 #### src/lib.rs
@@ -2530,6 +2547,8 @@ pub use command::*;
 mod traits;
 
 pub use traits::*;
+mod types;
+pub use types::*;
 ```
 
 #### src/main.rs

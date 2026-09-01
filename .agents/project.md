@@ -59,8 +59,17 @@ use save_load::Format;
 - Must have variants:
   - `Path(PathBuf)`
   - `Glob(Glob)`
+- Must have methods:
+  - `repos(&self) -> Result<impl Iterator<Item = Result<Repository, GitError>>, GitRepoSourceReposError>`
 
 ### impl SourceLike for GitRepoSource
+
+- Must have methods:
+  - `review_items`
+    - Must iterate `repos`
+      - Must iterate branches
+        - Must iterate commits in reverse order (latest commit first)
+          - Must get the first unapproved path within a commit
 
 ### struct CodexSource
 
@@ -73,3 +82,8 @@ use save_load::Format;
       - Must set `CODEX_HOME` var to `self.home`
 
 ### impl SourceLike for CodexSource
+
+### struct GitRepoApproval
+
+- Must have fields:
+  - 

@@ -21,3 +21,7 @@ pub fn meaningful_non_item_rust_lines() -> &'static [&'static str] {
 pub fn rust_analyzer_syntax_tree_retains_all_comments() -> bool {
     true
 }
+
+pub fn git_commits_store_files_not_hunks() -> bool {
+    true
+}

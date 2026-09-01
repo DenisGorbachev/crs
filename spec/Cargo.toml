@@ -10,6 +10,7 @@ categories.workspace = true
 exclude.workspace = true
 
 [dependencies]
+strum = { version = "0.28.0", features = ["derive"] }
 
 [lints]
 workspace = true

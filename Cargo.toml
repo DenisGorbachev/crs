@@ -77,3 +77,4 @@ thiserror = "2.0.17"
 tokio = { version = "1.39.2", features = ["macros", "fs", "net", "rt", "rt-multi-thread"] }
 futures = { version = "0.3.34" }
 save-load = { git = "https://github.com/DenisGorbachev/save-load", features = ["clap", "serde_json", "serde_yaml", "toml"] }
+git2 = "0.21.0"
