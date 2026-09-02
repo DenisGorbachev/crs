@@ -152,5 +152,5 @@ use save_load::Format;
 
 - Must have fields:
   - `repo_id: GitRepoId`
-  - `commit_hash: GitCommitHash`
+  - `commit_hash: GitOid`
   - `path: PathBuf`

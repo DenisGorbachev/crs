@@ -12,5 +12,5 @@ mod tx;
 pub use tx::*;
 mod git_repo_id;
 pub use git_repo_id::*;
-mod git_commit_hash;
-pub use git_commit_hash::*;
+mod git_oid;
+pub use git_oid::*;
