@@ -64,6 +64,32 @@ use save_load::Format;
 
 ### struct PrintVerdictCommand
 
+### struct GitCommand
+
+### struct RepoGitCommand
+
+### struct InsertRepoGitCommand
+
+- Must have fields:
+  - `dir: PathBuf`
+- Must have methods:
+  - `run`
+
+### struct MoveRepoGitCommand
+
+- Must have fields:
+  - `old: PathBuf`
+  - `new: PathBuf`
+- Must have methods:
+  - `run`
+
+### struct RemoveRepoGitCommand
+
+- Must have fields:
+  - `dir: PathBuf`
+- Must have methods:
+  - `run`
+
 ### struct Config
 
 - Must have fields:
