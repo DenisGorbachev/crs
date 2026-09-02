@@ -142,3 +142,15 @@ use save_load::Format;
     - Must not insert
   - `insert_at<'t>(&self, id: SessionId, tx: &mut Tx<'t>)`
     - Must call `insert_archived`
+
+### enum Locator
+
+- Must have variants:
+  - `GitPath(GitPathLocator)`
+
+### struct GitPathLocator
+
+- Must have fields:
+  - `repo_id: GitRepoId`
+  - `commit_hash: GitCommitHash`
+  - `path: PathBuf`
