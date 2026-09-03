@@ -6,7 +6,7 @@ members = ["spec"]
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.93.1"
+rust-version = "1.95.0"
 homepage = "https://github.com/DenisGorbachev/crs"
 repository = "https://github.com/DenisGorbachev/crs"
 keywords = []
@@ -84,4 +84,17 @@ fjall = { version = "3.1.10" }
 rkyv = { version = "0.8.16", features = ["unaligned"] }
 pulldown-cmark = "0.13.0"
 uuid = "1.26.0"
-codex-protocol = { git = "https://github.com/openai/codex", rev = "tags/rust-v0.150.0", version = "0.150.0" }
+codex-protocol = { git = "https://github.com/openai/codex", tag = "rust-v0.150.0", version = "0.150.0" }
+serde_json = "1.0.0"
+codex-core = { git = "https://github.com/openai/codex", tag = "rust-v0.150.0", version = "0.150.0" }
+codex-rollout = { git = "https://github.com/openai/codex", tag = "rust-v0.150.0", version = "0.150.0" }
+codex-thread-store = { git = "https://github.com/openai/codex", tag = "rust-v0.150.0", version = "0.150.0" }
+codex-app-server-protocol = { git = "https://github.com/openai/codex", tag = "rust-v0.150.0", version = "0.150.0" }
+
+[patch.crates-io]
+# `codex-thread-store` relies on the fork-only proxy support used by the Codex workspace.
+tokio-tungstenite = { git = "https://github.com/openai-oss-forks/tokio-tungstenite", rev = "0e5b2d73aa18dd9f0a50ee9ff199d5aef7594186" }
+tungstenite = { git = "https://github.com/openai-oss-forks/tungstenite-rs", rev = "4fffad30fe373adbdcffab9545e9e9bf4f2fc19f" }
+
+[patch."ssh://git@github.com/openai-oss-forks/tungstenite-rs.git"]
+tungstenite = { git = "https://github.com/openai-oss-forks/tungstenite-rs", rev = "4fffad30fe373adbdcffab9545e9e9bf4f2fc19f" }

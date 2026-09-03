@@ -99,6 +99,7 @@ use save_load::Format;
 Notes:
 
 - Codex subcommands should use internal codex crates directly
+- Codex subcommands must drop backwards compatibility for codex versions less than `v0.150.0`
 
 ### struct ThreadCodexCommand
 
