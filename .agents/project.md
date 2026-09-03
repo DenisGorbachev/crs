@@ -8,6 +8,14 @@ CRS is a code review system.
 
 ## Decisions
 
+- How to compose a message?
+  - Options
+    - Use `codex exec`, open the artifacts via commands
+    - Use "External editor", open the artifacts in popups
+      - How to implement popups?
+        - Options
+          - Via editor plugin
+          - Via mux pane
 - How to deal with file-level changes that are not tied to a specific code item?
   - Examples:
     - Adding `#![no_std]`
@@ -236,3 +244,25 @@ Notes:
     - Must ignore `MarkdownEvent::End` events
     - Must select occurrence `occurrence` among the events whose source range equals `source_range`
     - Must return the selected `MarkdownEvent` and its source range
+
+### src/shell/helpers.sh
+
+- Must target Bash and Zsh
+- Must assume the existence of callables:
+  - `codex-exec`
+    - Rationale: some users want to run `codex` in a sandbox, so the helpers should not run `codex` directly
+- Must contain log functions: `info`, `warn`, `error`
+- Must contain `crs-thread-create`
+  - Must error if `CRS_CODEX_THREAD_ID` is set
+  - Must call `codex-exec` with "$@"
+    - Must not add `--json`
+  - Must parse the thread id out of `codex-exec` output
+  - Must export `CRS_CODEX_THREAD_ID`
+  - Must stream the stdout and stderr from `codex-exec` to shell
+    - Rationale: the user wants to see the progress
+- Must contain `crs-thread-resume`
+  - Must error if `CRS_CODEX_THREAD_ID` is not set
+  - Must call `codex-exec resume` with `CRS_CODEX_THREAD_ID` and "$@"
+    - Must not add `--json`
+  - Must stream the stdout and stderr from `codex-exec` to shell
+    - Rationale: the user wants to see the progress
