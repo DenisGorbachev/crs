@@ -16,6 +16,7 @@
 ```rust
 use tokio::process::Command;
 use globset::Glob;
+use pulldown_cmark::{OffsetIter, Options};
 use save_load::Format;
 ```
 
@@ -24,6 +25,7 @@ use save_load::Format;
 - Must have dependencies:
   - `globset`
   - `save-load`
+  - `pulldown-cmark`
 
 ### struct Command
 
@@ -180,3 +182,33 @@ use save_load::Format;
   - `repo_id: GitRepoId`
   - `commit_hash: GitOid`
   - `path: PathBuf`
+
+### type MarkdownParser
+
+- Must be a type alias of `pulldown_cmark::Parser`
+
+### type MarkdownEvent
+
+- Must be a type alias of `pulldown_cmark::Event`
+
+### fn markdown_parser_new
+
+- Must accept a Markdown document
+- Must return `MarkdownParser`
+- Must return `MarkdownParser::new_ext(document, Options::all())`
+
+### struct MarkdownLocator
+
+- Must be an [archived type](#archived-type)
+- Must have fields:
+  - `range: Range<usize>`
+    - /// The half-open UTF-8 byte range returned by `OffsetIter::next`
+  - `occurrence: usize`
+    - /// The zero-based occurrence among the non-`MarkdownEvent::End` events whose source range equals `range`
+- Must have methods:
+  - `locate`
+    - Must have inputs:
+      - `iter: &mut OffsetIter`
+    - Must ignore `MarkdownEvent::End` events
+    - Must select occurrence `occurrence` among the events whose source range equals `source_range`
+    - Must return the selected `MarkdownEvent` and its source range

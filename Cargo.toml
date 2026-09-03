@@ -82,3 +82,4 @@ git2 = "0.21.0"
 timestamp-please = { git = "https://github.com/DenisGorbachev/timestamp-please", features = ["serde", "time"] }
 fjall = { version = "3.1.10" }
 rkyv = { version = "0.8.16", features = ["unaligned"] }
+pulldown-cmark = "0.13.0"

@@ -14,3 +14,7 @@ mod git_repo_id;
 pub use git_repo_id::*;
 mod git_oid;
 pub use git_oid::*;
+mod markdown_event;
+pub use markdown_event::*;
+mod markdown_parser;
+pub use markdown_parser::*;

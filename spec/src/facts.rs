@@ -25,3 +25,11 @@ pub fn rust_analyzer_syntax_tree_retains_all_comments() -> bool {
 pub fn git_commits_store_files_not_hunks() -> bool {
     true
 }
+
+pub fn codex_sessions_are_on_sandbox_volume() -> bool {
+    true
+}
+
+pub fn codex_sessions_must_be_accessed_via_wyrc() -> bool {
+    codex_sessions_are_on_sandbox_volume()
+}
