@@ -1,4 +1,6 @@
-# crs
+# CRS
+
+CRS is a code review system.
 
 ## TODO
 
@@ -91,6 +93,27 @@ use save_load::Format;
   - `dir: PathBuf`
 - Must have methods:
   - `run`
+
+### struct CodexCommand
+
+Notes:
+
+- Codex subcommands should use internal codex crates directly
+
+### struct ThreadCodexCommand
+
+- Must have fields:
+  - `thread_id: CodexThreadId` (env: `CRS_CODEX_THREAD_ID`)
+
+### struct RenderFinalAnswerThreadCodexCommand
+
+- Must have methods:
+  - `run`
+    - Must get the last item in a thread by `thread_id`
+    - Must return an error if it's not `FinalAnswer`
+    - Must write the text of the final answer to `stdout`
+
+### struct
 
 ### struct Config
 
