@@ -232,6 +232,7 @@ dependencies = [
  "thiserror",
  "timestamp-please",
  "tokio",
+ "uuid",
 ]
 
 [[package]]

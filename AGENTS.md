@@ -2625,6 +2625,7 @@ timestamp-please = { git = "https://github.com/DenisGorbachev/timestamp-please",
 fjall = { version = "3.1.10" }
 rkyv = { version = "0.8.16", features = ["unaligned"] }
 pulldown-cmark = "0.13.0"
+uuid = "1.26.0"
 ```
 
 #### spec/Cargo.toml

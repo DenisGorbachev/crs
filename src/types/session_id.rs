@@ -1,1 +1,1 @@
-pub type SessionId = u64;
+pub type SessionId = uuid::Uuid;
