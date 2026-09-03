@@ -731,7 +731,7 @@ use save_load::Format;
   - `config: PathBuf`
   - `db: PathBuf`
   - `user_id: UserId`
-  - `session_id: SessionId` (env: `SESSION_ID`)
+  - `session_id: SessionId` (env: `CRS_SESSION_ID`)
 - Must have methods:
   - `run`
     - `let config = Format::load_one_as(&config)`
