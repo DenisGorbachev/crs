@@ -20,3 +20,7 @@ mod markdown_parser;
 pub use markdown_parser::*;
 mod codex_thread_id;
 pub use codex_thread_id::*;
+mod line_index;
+pub use line_index::*;
+mod char_interval;
+pub use char_interval::*;

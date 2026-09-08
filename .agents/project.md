@@ -50,6 +50,15 @@ use save_load::Format;
     - `let db = Db::open(db_config)`
     - `let now = Timestamp::now()`
 
+### struct ReviewCommand
+
+- Must have fields:
+  - `path: PathBuf` /// The path to review file
+- Must have methods:
+  - `run`
+    - `let review: Review = Format::load_one_as(&path)`
+    - `todo!()`
+
 ### struct ShowCommand
 
 - Must have methods:
@@ -214,6 +223,29 @@ Notes:
   - `repo_id: GitRepoId`
   - `commit_hash: GitOid`
   - `path: PathBuf`
+
+### struct Review
+
+- Must have fields:
+  - `items: Vec<ReviewItem>`
+- Must have methods:
+  - `write_as_markdown(writer: &mut impl Write, source: &str)`
+    - Must iterate items
+      - Must call `item.write_as_markdown`
+    - Must separate the items with a horizontal line ("-----")
+
+### struct ReviewItem
+
+- Must have fields:
+  - `interval: CharInterval`
+  - `comment: String`
+- Must have methods:
+  - `write_as_markdown(writer: &mut impl Write, source: &str)`
+    - Must write the `interval` from `source` as a Markdown quote
+      - Must prefix each line with a quote (`>`)
+      - Must escape each line
+    - Must write a newline
+    - Must write `comment`
 
 ### type MarkdownParser
 

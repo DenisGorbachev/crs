@@ -90,6 +90,7 @@ codex-core = { git = "https://github.com/openai/codex", tag = "rust-v0.150.0", v
 codex-rollout = { git = "https://github.com/openai/codex", tag = "rust-v0.150.0", version = "0.150.0" }
 codex-thread-store = { git = "https://github.com/openai/codex", tag = "rust-v0.150.0", version = "0.150.0" }
 codex-app-server-protocol = { git = "https://github.com/openai/codex", tag = "rust-v0.150.0", version = "0.150.0" }
+interval-zoo = { git = "https://github.com/DenisGorbachev/interval-zoo" }
 
 [patch.crates-io]
 # `codex-thread-store` relies on the fork-only proxy support used by the Codex workspace.

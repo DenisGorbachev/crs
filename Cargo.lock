@@ -3539,6 +3539,7 @@ dependencies = [
  "fjall",
  "futures",
  "git2",
+ "interval-zoo",
  "itertools 0.15.0",
  "pulldown-cmark 0.13.0",
  "rkyv",
@@ -3546,7 +3547,7 @@ dependencies = [
  "serde_json",
  "standard-traits",
  "strum 0.28.0",
- "stub-macro",
+ "stub-macro 0.3.1",
  "subtype",
  "thiserror 2.0.20",
  "timestamp-please",
@@ -6726,6 +6727,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "11274e5e8e89b8607cfedc2910b6626e998779b48a019151c7604d0adcb86ac6"
 dependencies = [
  "compare",
+]
+
+[[package]]
+name = "interval-zoo"
+version = "0.1.0"
+source = "git+https://github.com/DenisGorbachev/interval-zoo#e5e83b63e6b069ce88eb0956a5efc2a06d770fdf"
+dependencies = [
+ "derive-getters",
+ "derive-new",
+ "derive_more 2.1.1",
+ "errgonomic 0.5.3",
+ "itertools 0.14.0",
+ "num-traits",
+ "standard-traits",
+ "strum 0.27.2",
+ "stub-macro 0.2.1",
+ "subtype",
+ "thiserror 2.0.20",
 ]
 
 [[package]]
@@ -11131,6 +11150,12 @@ dependencies = [
  "quote",
  "syn 2.0.119",
 ]
+
+[[package]]
+name = "stub-macro"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b898e484f55f310f9513dd80f0b65c4e1030abc101fecffed6003baea6a4a853"
 
 [[package]]
 name = "stub-macro"
