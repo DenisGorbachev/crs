@@ -44,5 +44,5 @@ mod codex_command;
 pub use codex_command::*;
 mod thread_codex_command;
 pub use thread_codex_command::*;
-mod render_final_answer_thread_codex_command;
-pub use render_final_answer_thread_codex_command::*;
+mod render_agent_message_thread_codex_command;
+pub use render_agent_message_thread_codex_command::*;

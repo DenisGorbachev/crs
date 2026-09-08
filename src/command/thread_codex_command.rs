@@ -1,4 +1,4 @@
-use crate::{CodexThreadId, RenderFinalAnswerThreadCodexCommand, RenderFinalAnswerThreadCodexCommandRunError};
+use crate::{CodexThreadId, RenderAgentMessageThreadCodexCommand, RenderAgentMessageThreadCodexCommandRunError};
 use ThreadCodexSubcommand::*;
 use clap::{Parser, Subcommand};
 use errgonomic::map_err;
@@ -16,7 +16,7 @@ pub struct ThreadCodexCommand {
 
 #[derive(Subcommand, Clone, Debug)]
 pub enum ThreadCodexSubcommand {
-    RenderFinalAnswer(RenderFinalAnswerThreadCodexCommand),
+    RenderAgentMessage(RenderAgentMessageThreadCodexCommand),
 }
 
 impl ThreadCodexCommand {
@@ -27,13 +27,13 @@ impl ThreadCodexCommand {
             subcommand,
         } = self;
         match subcommand {
-            RenderFinalAnswer(command) => map_err!(command.run(thread_id).await, RenderFinalAnswerThreadCodexCommandRunFailed),
+            RenderAgentMessage(command) => map_err!(command.run(thread_id).await, RenderAgentMessageThreadCodexCommandRunFailed),
         }
     }
 }
 
 #[derive(Error, Debug)]
 pub enum ThreadCodexCommandRunError {
-    #[error("failed to render the final answer from a Codex thread")]
-    RenderFinalAnswerThreadCodexCommandRunFailed { source: RenderFinalAnswerThreadCodexCommandRunError },
+    #[error("failed to render an agent message from a Codex thread")]
+    RenderAgentMessageThreadCodexCommandRunFailed { source: RenderAgentMessageThreadCodexCommandRunError },
 }

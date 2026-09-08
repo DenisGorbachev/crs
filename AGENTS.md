@@ -2452,6 +2452,7 @@ cfg_if::cfg_if! {
 
 ```shell
 origin
+repoconf-rust-pre-public-cli-template
 ```
 
 ## Project files
