@@ -314,4 +314,4 @@ Notes:
 
 #### function crs-codex-thread-render-message
 
-- Must call `crs-exec codex thread render-agent-message "$@" | glow`
+- Must call `crs codex thread render-agent-message "$@" | glow`
