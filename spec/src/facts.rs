@@ -1,3 +1,7 @@
+pub fn programs_may_output_content_with_escape_sequences() -> bool {
+    true
+}
+
 pub fn rust_items_may_be_interdependent() -> bool {
     !interdependent_rust_item_examples().is_empty()
 }

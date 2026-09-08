@@ -938,7 +938,7 @@ Notes:
 - Must have methods:
   - `write_as_markdown(writer: &mut impl Write, source: &str)`
     - Must write the `interval` from `source` as a Markdown quote
-      - Must prefix each line with a quote (`> `)
+      - Must prefix each line with a quote (`>`)
       - Must escape each line
     - Must write a newline
     - Must write `comment`
@@ -2676,24 +2676,7 @@ unused_import_braces = "deny"
 absolute_paths = "deny"
 arithmetic_side_effects = "deny"
 
-[package]
-name = "crs"
-version.workspace = true
-edition.workspace = true
-rust-version.workspace = true
-homepage.workspace = true
-repository.workspace = true
-keywords.workspace = true
-categories.workspace = true
-exclude.workspace = true
-
-[package.metadata.details]
-title = ""
-
-[lints]
-workspace = true
-
-[dependencies]
+[workspace.dependencies]
 clap = { version = "4.5.11", features = ["derive", "env"] }
 derive-getters = { version = "0.5.0", features = ["auto_copy_getters"] }
 derive-new = "0.7.0"
@@ -2722,6 +2705,52 @@ codex-thread-store = { git = "https://github.com/openai/codex", tag = "rust-v0.1
 codex-app-server-protocol = { git = "https://github.com/openai/codex", tag = "rust-v0.150.0", version = "0.150.0" }
 interval-zoo = { git = "https://github.com/DenisGorbachev/interval-zoo" }
 
+[package]
+name = "crs"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+exclude.workspace = true
+
+[package.metadata.details]
+title = ""
+
+[lints]
+workspace = true
+
+[dependencies]
+clap.workspace = true
+derive-getters.workspace = true
+derive-new.workspace = true
+derive_more.workspace = true
+errgonomic.workspace = true
+itertools.workspace = true
+standard-traits.workspace = true
+strum.workspace = true
+stub-macro.workspace = true
+subtype.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+futures.workspace = true
+save-load.workspace = true
+git2.workspace = true
+timestamp-please.workspace = true
+fjall.workspace = true
+rkyv.workspace = true
+pulldown-cmark.workspace = true
+uuid.workspace = true
+codex-protocol.workspace = true
+serde_json.workspace = true
+codex-core.workspace = true
+codex-rollout.workspace = true
+codex-thread-store.workspace = true
+codex-app-server-protocol.workspace = true
+interval-zoo.workspace = true
+
 [patch.crates-io]
 # `codex-thread-store` relies on the fork-only proxy support used by the Codex workspace.
 tokio-tungstenite = { git = "https://github.com/openai-oss-forks/tokio-tungstenite", rev = "0e5b2d73aa18dd9f0a50ee9ff199d5aef7594186" }
@@ -2746,7 +2775,8 @@ categories.workspace = true
 exclude.workspace = true
 
 [dependencies]
-strum = { version = "0.28.0", features = ["derive"] }
+strum.workspace = true
+clap.workspace = true
 
 [lints]
 workspace = true
