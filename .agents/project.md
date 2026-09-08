@@ -135,8 +135,6 @@ Notes:
     - Must get the agent message at `index`
     - Must write the text of the agent message to `stdout`
 
-### struct
-
 ### struct Config
 
 - Must have fields:
@@ -281,28 +279,39 @@ Notes:
     - Must select occurrence `occurrence` among the events whose source range equals `source_range`
     - Must return the selected `MarkdownEvent` and its source range
 
-### src/shell/helpers.sh
+### file src/shell/helpers.sh
 
 - Must target Bash and Zsh
 - Must assume the existence of callables:
   - `codex-exec`
     - Rationale: some users want to run `codex` in a sandbox, so the helpers should not run `codex` directly
 - Must contain log functions: `info`, `warn`, `error`
-- Must redirect `codex-exec` stdout to `$PWD/crs.local/$CRS_CODEX_THREAD_ID/$timestamp.md`
-  - `timestamp` must use UTC and the `%Y-%m-%d-%H-%M-%S` format
-  - Must not overwrite an existing output file
-- Must contain `crs-thread-create`
-  - Must error if `CRS_CODEX_THREAD_ID` is set
-  - Must call `codex-exec` with "$@"
-    - Must not add `--json`
-  - Must parse the session id out of `codex-exec` output
-  - Must export `CRS_CODEX_THREAD_ID`
-  - Must stream stderr from `codex-exec` to shell
+
+#### function crs-codex-thread-create
+
+- Must error if `CRS_CODEX_THREAD_ID` is set
+- Must call `codex-exec` with "$@"
+  - Must not add `--json`
+  - Must redirect `codex-exec` stdout to `$PWD/crs.local/$CRS_CODEX_THREAD_ID/$timestamp.md`
+    - `timestamp` must use UTC and the `%Y-%m-%d-%H-%M-%S` format
+    - Must not overwrite an existing output file
+  - Must stream stderr to shell
     - Rationale: the user wants to see the progress
-- Must contain `crs-thread-resume`
-  - Must error if `CRS_CODEX_THREAD_ID` is not set
-  - Must error before calling `codex-exec` if the output file exists
-  - Must call `codex-exec resume` with `CRS_CODEX_THREAD_ID` and "$@"
-    - Must not add `--json`
-  - Must stream stderr from `codex-exec` to shell
+- Must parse the session id out of `codex-exec` output
+- Must export `CRS_CODEX_THREAD_ID`
+
+#### function crs-codex-thread-resume
+
+- Must error if `CRS_CODEX_THREAD_ID` is not set
+- Must error before calling `codex-exec` if the output file exists
+- Must call `codex-exec resume` with `CRS_CODEX_THREAD_ID` and "$@"
+  - Must not add `--json`
+  - Must redirect `codex-exec` stdout to `$PWD/crs.local/$CRS_CODEX_THREAD_ID/$timestamp.md`
+    - `timestamp` must use UTC and the `%Y-%m-%d-%H-%M-%S` format
+    - Must not overwrite an existing output file
+  - Must stream stderr to shell
     - Rationale: the user wants to see the progress
+
+#### function crs-codex-thread-render-message
+
+- Must call `crs-exec codex thread render-agent-message "$@" | glow`
