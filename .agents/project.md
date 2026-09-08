@@ -123,13 +123,17 @@ Notes:
 - Must have fields:
   - `thread_id: CodexThreadId` (env: `CRS_CODEX_THREAD_ID`)
 
-### struct RenderFinalAnswerThreadCodexCommand
+### struct RenderAgentMessageThreadCodexCommand
 
+- Must have fields:
+  - `index: usize` (`default_value_t = 0`)
 - Must have methods:
   - `run`
-    - Must get the last item in a thread by `thread_id`
-    - Must return an error if it's not `FinalAnswer`
-    - Must write the text of the final answer to `stdout`
+    - `let params = list_items_params_all_reverse(thread_id)`
+    - Must call `store.list_items(params)`
+    - Must filter by `AgentMessage` variant
+    - Must get the agent message at `index`
+    - Must write the text of the agent message to `stdout`
 
 ### struct
 

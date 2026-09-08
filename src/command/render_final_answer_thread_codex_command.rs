@@ -1,12 +1,10 @@
-use crate::CodexThreadId;
+use crate::{CodexThreadId, list_items_params_all_reverse};
 use codex_app_server_protocol::ThreadItem;
 use codex_app_server_protocol::ThreadItem::*;
 use codex_core::config::Config;
 use codex_protocol::models::MessagePhase::*;
 use codex_rollout::state_db::get_state_db;
-use codex_thread_store::ItemSortKey::*;
-use codex_thread_store::SortDirection::*;
-use codex_thread_store::{ListItemsParams, LocalThreadStore, LocalThreadStoreConfig, StoredThreadItem, ThreadStoreError};
+use codex_thread_store::{LocalThreadStore, LocalThreadStoreConfig, StoredThreadItem, ThreadStoreError};
 use errgonomic::{handle, handle_opt};
 use std::io::{self, Write, stdout};
 use std::process::ExitCode;
@@ -23,23 +21,17 @@ impl RenderFinalAnswerThreadCodexCommand {
         let config = handle!(Config::load_with_cli_overrides(Vec::new()).await, LoadWithCliOverridesFailed);
         let state_db = get_state_db(&config).await;
         let store = LocalThreadStore::new(LocalThreadStoreConfig::from_config(&config), state_db);
-        let page = handle!(
-            store
-                .list_items(ListItemsParams {
-                    thread_id,
-                    turn_id: None,
-                    include_archived: true,
-                    cursor: None,
-                    page_size: 1,
-                    sort_direction: Desc,
-                    sort_key: CreatedAtOrdinal,
-                    after_updated_at_ordinal: None,
-                })
-                .await,
-            ListItemsFailed,
-            thread_id
-        );
-        let stored_item = handle_opt!(page.items.into_iter().next(), ThreadItemNotFound, thread_id);
+        let params = list_items_params_all_reverse(thread_id);
+        let page = handle!(store.list_items(params).await, ListItemsFailed, thread_id);
+        let mut stored_items = page.items.into_iter();
+        // let agent_messages = stored_items.filter_map(|x| {
+        //     if matches!(x, AgentMessage {..}) {
+        //         Some(x)
+        //     } else {
+        //         None
+        //     }
+        // });
+        let stored_item = handle_opt!(stored_items.next(), ThreadItemNotFound, thread_id);
         let StoredThreadItem {
             item_json,
             ..
