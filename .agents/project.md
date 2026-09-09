@@ -284,16 +284,10 @@ Notes:
 - Must target Bash and Zsh
 - Must assume the existence of callables:
   - `crs-codex`
-    - Must accept the same subcommands and arguments as `codex`
-    - Rationale: some users want to run `codex` in a sandbox, so the helpers should not run `codex` directly
   - `crs-timestamp`
-    - Must print the current UTC timestamp in the `%Y-%m-%d-%H-%M-%S` format
   - `info`
-    - Must print an informational message to stderr
   - `warn`
-    - Must print a warning message to stderr
   - `error`
-    - Must print an error message to stderr and return status 1
 - Shared helpers must be defined in the dotfiles repository and must not be redefined here
 
 #### requirements for crs-codex exec invoker
