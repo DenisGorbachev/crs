@@ -283,34 +283,43 @@ Notes:
 
 - Must target Bash and Zsh
 - Must assume the existence of callables:
-  - `codex-exec`
+  - `crs-codex`
+    - Must accept the same subcommands and arguments as `codex`
     - Rationale: some users want to run `codex` in a sandbox, so the helpers should not run `codex` directly
-- Must contain log functions: `info`, `warn`, `error`
+  - `crs-timestamp`
+    - Must print the current UTC timestamp in the `%Y-%m-%d-%H-%M-%S` format
+  - `info`
+    - Must print an informational message to stderr
+  - `warn`
+    - Must print a warning message to stderr
+  - `error`
+    - Must print an error message to stderr and return status 1
+- Shared helpers must be defined in the dotfiles repository and must not be redefined here
 
-#### requirements for codex-exec invoker
+#### requirements for crs-codex exec invoker
 
-- Every `codex-exec` invocation:
+- Every `crs-codex exec` invocation:
   - Must not add `--json`
   - Must redirect stdout to `$PWD/crs.local/$CRS_CODEX_THREAD_ID/$timestamp.md`
-    - `timestamp` must use UTC and the `%Y-%m-%d-%H-%M-%S` format
+    - `timestamp` must be obtained by calling `crs-timestamp`
     - Must not overwrite an existing output file
   - Must stream stderr to shell
     - Rationale: the user wants to see the progress
 
 #### function crs-codex-thread-create
 
-- Must satisfy [requirements for codex-exec invoker](#requirements-for-codex-exec-invoker)
+- Must satisfy [requirements for crs-codex exec invoker](#requirements-for-crs-codex-exec-invoker)
 - Must error if `CRS_CODEX_THREAD_ID` is set
-- Must call `codex-exec` with "$@"
-- Must parse the session id out of `codex-exec` output
+- Must call `crs-codex exec` with "$@"
+- Must parse the session id out of `crs-codex exec` output
 - Must export `CRS_CODEX_THREAD_ID`
 
 #### function crs-codex-thread-resume
 
-- Must satisfy [requirements for codex-exec invoker](#requirements-for-codex-exec-invoker)
+- Must satisfy [requirements for crs-codex exec invoker](#requirements-for-crs-codex-exec-invoker)
 - Must error if `CRS_CODEX_THREAD_ID` is not set
-- Must error before calling `codex-exec` if the output file exists
-- Must call `codex-exec resume` with `CRS_CODEX_THREAD_ID` and "$@"
+- Must error before calling `crs-codex exec` if the output file exists
+- Must call `crs-codex exec resume` with `CRS_CODEX_THREAD_ID` and "$@"
 
 #### function crs-codex-thread-render-message
 

@@ -1,22 +1,3 @@
-function info() {
-  echo "[I] $*" >&2
-}
-
-function warn() {
-  echo "[W] $*" >&2
-}
-
-function error() {
-  echo "[E] $*" >&2
-  return 1
-}
-
-function crs-timestamp() {
-  if ! date -u +%Y-%m-%d-%H-%M-%S; then
-    error "Failed to get the current UTC time"
-  fi
-}
-
 function crs-codex-thread-output-path() {
   local output_dir="$PWD/crs.local/$CRS_CODEX_THREAD_ID"
   if ! mkdir -p "$output_dir"; then
@@ -52,19 +33,19 @@ function crs-codex-thread-create() {
   done < <(
     set -euo pipefail
     trap 'codex_status=$?; echo; echo "crs-codex-thread-create status:$codex_status"' EXIT
-    { codex-exec "$@" > "$output_temp"; } 2>&1 | tee /dev/stderr
+    { crs-codex exec "$@" > "$output_temp"; } 2>&1 | tee /dev/stderr
   )
 
   if [[ -z ${CRS_CODEX_THREAD_ID-} ]]; then
     unset CRS_CODEX_THREAD_ID
-    error "Session id not found in codex-exec output"
+    error "Session id not found in crs-codex exec output"
     [[ $codex_status != 0 ]] || codex_status=1
   elif ! output_path=$(crs-codex-thread-output-path "$timestamp") || ! mv -n "$output_temp" "$output_path" || [[ -e $output_temp ]]; then
-    error "Failed to publish codex-exec output: $output_temp"
+    error "Failed to publish crs-codex exec output: $output_temp"
     [[ $codex_status != 0 ]] || codex_status=1
   fi
   if [[ -e $output_temp ]]; then
-    warn "codex-exec stdout remains at: $output_temp"
+    warn "crs-codex exec stdout remains at: $output_temp"
   fi
   return "$codex_status"
 }
@@ -82,5 +63,5 @@ function crs-codex-thread-resume() {
     error "Output file already exists: $output_path"
     return 1
   fi
-  codex-exec resume "$CRS_CODEX_THREAD_ID" "$@" > "$output_path"
+  crs-codex exec resume "$CRS_CODEX_THREAD_ID" "$@" > "$output_path"
 }
