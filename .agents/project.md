@@ -50,15 +50,6 @@ use save_load::Format;
     - `let db = Db::open(db_config)`
     - `let now = Timestamp::now()`
 
-### struct ReviewCommand
-
-- Must have fields:
-  - `path: PathBuf` /// The path to review file
-- Must have methods:
-  - `run`
-    - `let review: Review = Format::load_one_as(&path)`
-    - `todo!()`
-
 ### struct ShowCommand
 
 - Must have methods:
@@ -163,6 +154,21 @@ Notes:
     - `let params = list_threads_params_all_reverse(cwd_filters, search_term)`
     - Must paginate matching threads, skip `offset` threads, and write at most `limit` threads to `stdout` newest first via `write_jsonl`
     - Must cap the requested page size at offset plus limit and the store's maximum page size
+
+### struct ReviewCommand
+
+- Must have methods:
+  - `run`
+    - `let reviews = reviews_keyspace(&db)`
+
+### struct InsertReviewCommand
+
+- Must have methods:
+  - `run`
+    - `let review_id = create_review_id(now)`
+    - `let review = Review::default()`
+    - `insert_archived(&reviews, review_id, &review)`
+    - Must write `review_id` to `stdout`
 
 ### struct GitApprovalSet
 
@@ -270,22 +276,36 @@ Notes:
 
 - Must have fields:
   - `items: Vec<ReviewItem>`
+
+### struct ReviewItem
+
+- Must have fields:
+  - `quote: String`
+  - `comment: String`
+- Must have methods:
+  - `write_as_markdown(writer: &mut impl Write)`
+    - Must call `write_markdown_blockquote(writer, &self.quote)`
+    - Must write a newline
+    - Must write `comment`
+
+### struct SourceReview
+
+- Must have fields:
+  - `items: Vec<SourceReviewItem>`
 - Must have methods:
   - `write_as_markdown(writer: &mut impl Write, source: &str)`
     - Must iterate items
       - Must call `item.write_as_markdown`
     - Must separate the items with a horizontal line ("-----")
 
-### struct ReviewItem
+### struct SourceReviewItem
 
 - Must have fields:
   - `interval: CharInterval`
   - `comment: String`
 - Must have methods:
   - `write_as_markdown(writer: &mut impl Write, source: &str)`
-    - Must write the `interval` from `source` as a Markdown quote
-      - Must prefix each line with a quote (`>`)
-      - Must escape each line
+    - Must call `write_markdown_blockquote(writer, source[interval])`
     - Must write a newline
     - Must write `comment`
 
@@ -302,6 +322,16 @@ Notes:
 - Must accept a Markdown document
 - Must return `MarkdownParser`
 - Must return `MarkdownParser::new_ext(document, Options::all())`
+
+### fn write_markdown_blockquote
+
+- Must have inputs:
+  - `writer: &mut impl Write`
+  - `quote: &impl AsRef<str>`
+- Must have body:
+  - Must write a Markdown blockquote
+    - Must prefix each line with `>`
+    - Must escape each line
 
 ### struct MarkdownLocator
 
