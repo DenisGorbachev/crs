@@ -164,6 +164,17 @@ Notes:
     - Must paginate matching threads, skip `offset` threads, and write at most `limit` threads to `stdout` newest first via `write_jsonl`
     - Must cap the requested page size at offset plus limit and the store's maximum page size
 
+### struct GitApprovalSet
+
+- Must have fields:
+  - `value: bool` (positional)
+  - `path: PathBuf` (positional)
+  - `commit: Option<GitCommitHash>`
+- Must have methods:
+  - `run`
+    - Must unwrap `commit`, defaulting to the current commit in the repo
+    - `todo!()`
+
 ### struct Config
 
 - Must have fields:
