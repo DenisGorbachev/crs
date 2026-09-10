@@ -850,6 +850,17 @@ Notes:
     - Must list threads through `LocalThreadStore::list_threads`, following `next_cursor` until exhausted
     - Must stream threads to `stdout` as JSONL lines via `serde_json::to_writer`
 
+##### struct GitApprovalSet
+
+- Must have fields:
+  - `value: bool` (positional)
+  - `path: PathBuf` (positional)
+  - `commit: Option<GitCommitHash>`
+- Must have methods:
+  - `run`
+    - Must unwrap `commit`, defaulting to the current commit in the repo
+    - `todo!()`
+
 ##### struct Config
 
 - Must have fields:
@@ -2474,7 +2485,6 @@ cfg_if::cfg_if! {
 
 ```shell
 origin
-repoconf-rust-pre-public-cli-template
 ```
 
 ## Project files
