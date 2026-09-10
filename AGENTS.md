@@ -817,9 +817,18 @@ Notes:
 ##### struct ThreadCodexCommand
 
 - Must have fields:
-  - `thread_id: CodexThreadId` (env: `CRS_CODEX_THREAD_ID`)
+  - `subcommand: ThreadCodexSubcommand`
 
-##### struct RenderAgentMessageThreadCodexCommand
+##### struct GetThreadCodexCommand
+
+- Must have fields:
+  - `thread_id: CodexThreadId` (positional, env: `CRS_CODEX_THREAD_ID`)
+  - `subcommand: GetThreadCodexSubcommand`
+- Must have methods:
+  - `run`
+    - Must pass `thread_id` to the selected subcommand
+
+##### struct RenderAgentMessageGetThreadCodexCommand
 
 - Must have fields:
   - `index: usize` (`default_value_t = 0`)
@@ -830,6 +839,16 @@ Notes:
     - Must filter by `AgentMessage` variant
     - Must get the agent message at `index`
     - Must write the text of the agent message to `stdout`
+
+##### struct FilterThreadCodexCommand
+
+- Must have fields:
+  - `search_term: Option<String>`
+- Must have methods:
+  - `run`
+    - `let params = list_threads_params_all_reverse(cwd, search_term)`
+    - Must list threads through `LocalThreadStore::list_threads`, following `next_cursor` until exhausted
+    - Must stream threads to `stdout` as JSONL lines via `serde_json::to_writer`
 
 ##### struct Config
 
@@ -1013,7 +1032,7 @@ Notes:
 
 ###### function crs-codex-thread-render-message
 
-- Must call `crs codex thread render-agent-message "$@" | glow`
+- Must call `crs codex thread get render-agent-message "$@" | glow`
 
 ### Error handling
 

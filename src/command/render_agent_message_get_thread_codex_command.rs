@@ -13,15 +13,15 @@ use thiserror::Error;
 
 #[derive(Parser, Clone, Debug)]
 #[command(flatten_help = true)]
-pub struct RenderAgentMessageThreadCodexCommand {
+pub struct RenderAgentMessageGetThreadCodexCommand {
     /// Zero-based agent message index, starting with the newest message.
     #[arg(long, default_value_t = 0)]
     pub index: usize,
 }
 
-impl RenderAgentMessageThreadCodexCommand {
-    pub async fn run(self, thread_id: CodexThreadId) -> Result<ExitCode, RenderAgentMessageThreadCodexCommandRunError> {
-        use RenderAgentMessageThreadCodexCommandRunError::*;
+impl RenderAgentMessageGetThreadCodexCommand {
+    pub async fn run(self, thread_id: CodexThreadId) -> Result<ExitCode, RenderAgentMessageGetThreadCodexCommandRunError> {
+        use RenderAgentMessageGetThreadCodexCommandRunError::*;
         let Self {
             index,
         } = self;
@@ -58,7 +58,7 @@ impl RenderAgentMessageThreadCodexCommand {
 }
 
 #[derive(Error, Debug)]
-pub enum RenderAgentMessageThreadCodexCommandRunError {
+pub enum RenderAgentMessageGetThreadCodexCommandRunError {
     #[error("failed to load the Codex configuration")]
     LoadWithCliOverridesFailed { source: io::Error },
     #[error("failed to list items in Codex thread '{thread_id}'")]
