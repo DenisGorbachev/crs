@@ -1,10 +1,9 @@
-use crate::thread_store_max_page_size;
-use codex_thread_store::ListThreadsParams;
+use crate::{ListThreadsParams, thread_store_max_page_size};
 use codex_thread_store::SortDirection::*;
 use codex_thread_store::ThreadSortKey::*;
 use std::path::PathBuf;
 
-pub fn list_threads_params_all_reverse(cwd: PathBuf, search_term: Option<String>) -> ListThreadsParams {
+pub fn list_threads_params_all_reverse(cwd_filters: Option<Vec<PathBuf>>, search_term: Option<String>) -> ListThreadsParams {
     ListThreadsParams {
         page_size: thread_store_max_page_size(),
         cursor: None,
@@ -12,7 +11,7 @@ pub fn list_threads_params_all_reverse(cwd: PathBuf, search_term: Option<String>
         sort_direction: Desc,
         allowed_sources: vec![],
         model_providers: None,
-        cwd_filters: Some(vec![cwd]),
+        cwd_filters,
         section: None,
         project_id: None,
         archived: false,

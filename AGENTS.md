@@ -533,6 +533,22 @@ Examples:
 
 A package that has a remote whose name contains `public` or `pre-public` and ends with `template`.
 
+### Guidelines for `serde`
+
+#### Requirements
+
+- Every input data type must derive `Serialize` and `Deserialize`
+- Every `Option`-wrapped field must have attributes:
+  - `#[serde(skip_serializing_if = "Option::is_none")]`
+- Every `OffsetDateTime` field must have attributes:
+  - `#[serde(with = "time::serde::rfc3339")]`
+- Every `Option<OffsetDateTime>` field must have attributes:
+  - `#[serde(with = "time::serde::rfc3339::option")]`
+
+#### Notes
+
+- It is recommended to use `serde_with` to reduce the code size by avoiding custom `Serialize`/`Deserialize` impls
+
 ### Guidelines for `subtype`
 
 - Define newtypes as ordinary structs with explicit `From` / `TryFrom` impls.
@@ -809,6 +825,13 @@ use save_load::Format;
 
 ##### struct CodexCommand
 
+- Must have fields:
+  - `dir: Option<PathBuf>` /// Scope for codex commands (defaults to current dir)
+  - `subcommand: CodexSubcommand`
+- Must have methods:
+  - `run`
+    - Must load the Codex config, construct one `LocalThreadStore`, and pass a borrowed `ThreadStore` through the selected subcommands
+
 Notes:
 
 - Codex subcommands should use internal codex crates directly
@@ -837,18 +860,21 @@ Notes:
     - `let params = list_items_params_all_reverse(thread_id)`
     - Must call `store.list_items(params)`
     - Must filter by `AgentMessage` variant
-    - Must get the agent message at `index`
+    - Must get the agent message at `index` within the first page, newest first
     - Must write the text of the agent message to `stdout`
 
 ##### struct FilterThreadCodexCommand
 
 - Must have fields:
   - `search_term: Option<String>`
+  - `cwd_filters: Option<Vec<PathBuf>>`
+  - `offset: usize` (`default_value_t = 0`)
+  - `limit: usize` (`default_value_t = 10`)
 - Must have methods:
   - `run`
-    - `let params = list_threads_params_all_reverse(cwd, search_term)`
-    - Must list threads through `LocalThreadStore::list_threads`, following `next_cursor` until exhausted
-    - Must stream threads to `stdout` as JSONL lines via `serde_json::to_writer`
+    - `let params = list_threads_params_all_reverse(cwd_filters, search_term)`
+    - Must paginate matching threads, skip `offset` threads, and write at most `limit` threads to `stdout` newest first via `write_jsonl`
+    - Must cap the requested page size at offset plus limit and the store's maximum page size
 
 ##### struct Config
 
@@ -2731,12 +2757,14 @@ fjall = { version = "3.1.10" }
 rkyv = { version = "0.8.16", features = ["unaligned"] }
 pulldown-cmark = "0.13.0"
 uuid = "1.26.0"
-codex-protocol = { git = "https://github.com/openai/codex", tag = "rust-v0.150.0", version = "0.150.0" }
+codex-protocol = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4", version = "0.153.4" }
+# serde_json requires serde >= 1.0.220; retain the compatible lockfile version instead of pinning 1.0.0.
+serde = "1.0.0"
 serde_json = "1.0.0"
-codex-core = { git = "https://github.com/openai/codex", tag = "rust-v0.150.0", version = "0.150.0" }
-codex-rollout = { git = "https://github.com/openai/codex", tag = "rust-v0.150.0", version = "0.150.0" }
-codex-thread-store = { git = "https://github.com/openai/codex", tag = "rust-v0.150.0", version = "0.150.0" }
-codex-app-server-protocol = { git = "https://github.com/openai/codex", tag = "rust-v0.150.0", version = "0.150.0" }
+codex-core = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4", version = "0.153.4" }
+codex-rollout = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4", version = "0.153.4" }
+codex-thread-store = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4", version = "0.153.4" }
+codex-app-server-protocol = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4", version = "0.153.4" }
 interval-zoo = { git = "https://github.com/DenisGorbachev/interval-zoo" }
 
 [package]
@@ -2762,7 +2790,6 @@ derive-getters.workspace = true
 derive-new.workspace = true
 derive_more.workspace = true
 errgonomic.workspace = true
-itertools.workspace = true
 standard-traits.workspace = true
 strum.workspace = true
 stub-macro.workspace = true
@@ -2784,6 +2811,8 @@ codex-rollout.workspace = true
 codex-thread-store.workspace = true
 codex-app-server-protocol.workspace = true
 interval-zoo.workspace = true
+serde.workspace = true
+itertools.workspace = true
 
 [patch.crates-io]
 # `codex-thread-store` relies on the fork-only proxy support used by the Codex workspace.

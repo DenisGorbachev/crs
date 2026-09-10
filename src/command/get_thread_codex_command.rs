@@ -1,6 +1,7 @@
 use crate::{CodexThreadId, RenderAgentMessageGetThreadCodexCommand, RenderAgentMessageGetThreadCodexCommandRunError};
 use GetThreadCodexSubcommand::*;
 use clap::{Parser, Subcommand};
+use codex_thread_store::ThreadStore;
 use errgonomic::handle;
 use std::process::ExitCode;
 use thiserror::Error;
@@ -21,14 +22,14 @@ pub enum GetThreadCodexSubcommand {
 }
 
 impl GetThreadCodexCommand {
-    pub async fn run(self) -> Result<ExitCode, GetThreadCodexCommandRunError> {
+    pub async fn run(self, store: &(impl ThreadStore + ?Sized)) -> Result<ExitCode, GetThreadCodexCommandRunError> {
         use GetThreadCodexCommandRunError::*;
         let Self {
             thread_id,
             subcommand,
         } = self;
         match subcommand {
-            RenderAgentMessage(command) => Ok(handle!(command.run(thread_id).await, RenderAgentMessageGetThreadCodexCommandRunFailed, thread_id)),
+            RenderAgentMessage(command) => Ok(handle!(command.run(store, thread_id).await, RenderAgentMessageGetThreadCodexCommandRunFailed, thread_id)),
         }
     }
 }

@@ -48,3 +48,5 @@ mod get_thread_codex_command;
 pub use get_thread_codex_command::*;
 mod render_agent_message_get_thread_codex_command;
 pub use render_agent_message_get_thread_codex_command::*;
+mod filter_thread_codex_command;
+pub use filter_thread_codex_command::*;

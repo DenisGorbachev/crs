@@ -113,6 +113,13 @@ use save_load::Format;
 
 ### struct CodexCommand
 
+- Must have fields:
+  - `dir: Option<PathBuf>` /// Scope for codex commands (defaults to current dir)
+  - `subcommand: CodexSubcommand`
+- Must have methods:
+  - `run`
+    - Must load the Codex config, construct one `LocalThreadStore`, and pass a borrowed `ThreadStore` through the selected subcommands
+
 Notes:
 
 - Codex subcommands should use internal codex crates directly
@@ -141,18 +148,21 @@ Notes:
     - `let params = list_items_params_all_reverse(thread_id)`
     - Must call `store.list_items(params)`
     - Must filter by `AgentMessage` variant
-    - Must get the agent message at `index`
+    - Must get the agent message at `index` within the first page, newest first
     - Must write the text of the agent message to `stdout`
 
 ### struct FilterThreadCodexCommand
 
 - Must have fields:
   - `search_term: Option<String>`
+  - `cwd_filters: Option<Vec<PathBuf>>`
+  - `offset: usize` (`default_value_t = 0`)
+  - `limit: usize` (`default_value_t = 10`)
 - Must have methods:
   - `run`
-    - `let params = list_threads_params_all_reverse(cwd, search_term)`
-    - Must list threads through `LocalThreadStore::list_threads`, following `next_cursor` until exhausted
-    - Must stream threads to `stdout` as JSONL lines via `serde_json::to_writer`
+    - `let params = list_threads_params_all_reverse(cwd_filters, search_term)`
+    - Must paginate matching threads, skip `offset` threads, and write at most `limit` threads to `stdout` newest first via `write_jsonl`
+    - Must cap the requested page size at offset plus limit and the store's maximum page size
 
 ### struct Config
 
