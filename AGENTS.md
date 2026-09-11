@@ -879,7 +879,7 @@ Notes:
   - `run`
     - `let review_id = create_review_id(now)`
     - `let review = Review::default()`
-    - `insert_archived(&reviews, review_id, &review)`
+    - `save(&reviews, review_id, &review)`
     - Must write `review_id` to `stdout`
 
 ##### struct GetReviewCommand
@@ -896,7 +896,7 @@ Notes:
     - `let item = ReviewItem::try_from(parts)`
     - `let review = load::<Review>::(reviews, review_id)`
     - `review.push(item)`
-    - `insert_archived(reviews, review_id, review)`
+    - `save(reviews, review_id, review)`
 
 ##### struct RenderGetReviewCommand
 
@@ -993,7 +993,7 @@ Notes:
   - `get_or_create<'t>(id: SessionId, tx: &mut Tx<'t>)`
     - Must not insert
   - `insert_at<'t>(&self, id: SessionId, tx: &mut Tx<'t>)`
-    - Must call `insert_archived`
+    - Must call `save`
 
 ##### enum Locator
 

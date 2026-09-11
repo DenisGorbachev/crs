@@ -7,12 +7,12 @@ use rkyv::rancor::Error as RkyvError;
 use rkyv::ser::allocator::ArenaHandle;
 use thiserror::Error;
 
-pub fn insert_archived<K, V>(tx: &mut Tx<'_>, keyspace: &Ks, key: K, value: &V) -> Result<(), InsertArchivedError>
+pub fn save<K, V>(tx: &mut Tx<'_>, keyspace: &Ks, key: K, value: &V) -> Result<(), SaveError>
 where
     K: Into<UserKey>,
     V: for<'a> Serialize<HighSerializer<Vec<u8>, ArenaHandle<'a>, RkyvError>>,
 {
-    use InsertArchivedError::*;
+    use SaveError::*;
     let key = key.into();
     let bytes = handle!(to_bytes_in::<_, RkyvError>(value, Vec::new()), ToBytesInFailed, key);
     tx.insert(keyspace, key, bytes);
@@ -20,7 +20,7 @@ where
 }
 
 #[derive(Error, Debug)]
-pub enum InsertArchivedError {
+pub enum SaveError {
     #[error("failed to serialize the archived value")]
     ToBytesInFailed { source: RkyvError, key: UserKey },
 }
