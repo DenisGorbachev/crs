@@ -170,6 +170,29 @@ Notes:
     - `insert_archived(&reviews, review_id, &review)`
     - Must write `review_id` to `stdout`
 
+### struct GetReviewCommand
+
+- Must have fields:
+  - `review_id: ReviewId` (`env = "CRS_REVIEW_ID"`)
+
+### struct PushGetReviewCommand
+
+- Must have fields:
+  - `parts: Vec<String>`
+- Must have methods:
+  - `run`
+    - `let item = ReviewItem::try_from(parts)`
+    - `let review = load::<Review>::(reviews, review_id)`
+    - `review.push(item)`
+    - `insert_archived(reviews, review_id, review)`
+
+### struct RenderGetReviewCommand
+
+- Must have methods:
+  - `run`
+    - `let review = load::<Review>::(reviews, review_id)`
+    - `review.write_as_markdown(&mut stdout)`
+
 ### struct GitApprovalSet
 
 - Must have fields:
@@ -280,13 +303,24 @@ Notes:
 ### struct ReviewItem
 
 - Must have fields:
-  - `quote: String`
+  - `quote: Option<String>`
   - `comment: String`
 - Must have methods:
   - `write_as_markdown(writer: &mut impl Write)`
-    - Must call `write_markdown_blockquote(writer, &self.quote)`
-    - Must write a newline
+    - `if let Some(quote) = self.quote.as_ref()`
+      - Must call `write_markdown_blockquote(writer, quote)`
+      - Must write a newline
     - Must write `comment`
+
+### impl TryFrom<Vec<String>> for ReviewItem
+
+- Must have functions:
+  - `try_from`
+    - `match parts.len()`
+      - 0 => `Err`
+      - 1 => `ReviewItem::new(None, parts[0])`
+      - 2 => `ReviewItem::new(Some(parts[0]), parts[1])`
+      - _ => `Err`
 
 ### struct SourceReview
 
@@ -388,3 +422,9 @@ Notes:
 #### function crs-codex-thread-render-message
 
 - Must call `crs codex thread get render-agent-message "$@" | glow`
+
+#### function crs-git-approval-next
+
+- TODO:
+  - Must show a single item
+  - Must exit the pager when the end of the item is reached
