@@ -24,5 +24,5 @@ mod line_index;
 pub use line_index::*;
 mod char_interval;
 pub use char_interval::*;
-mod review_id;
-pub use review_id::*;
+mod message_id;
+pub use message_id::*;

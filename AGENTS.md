@@ -871,43 +871,43 @@ Notes:
     - Must paginate matching threads, skip `offset` threads, and write at most `limit` threads to `stdout` newest first via `write_jsonl`
     - Must cap the requested page size at offset plus limit and the store's maximum page size
 
-##### struct ReviewCommand
+##### struct MessageCommand
 
 - Must have methods:
   - `run`
-    - `let reviews = reviews_keyspace(&db)`
+    - `let messages = messages_keyspace(&db)`
 
-##### struct InsertReviewCommand
+##### struct InsertMessageCommand
 
 - Must have methods:
   - `run`
-    - `let review_id = create_review_id(now)`
-    - `let review = Review::default()`
-    - `save(&reviews, review_id, &review)`
-    - Must write `review_id` to `stdout`
+    - `let message_id = create_message_id(now)`
+    - `let message = Message::default()`
+    - `save(&messages, message_id, &message)`
+    - Must write `message_id` to `stdout`
 
-##### struct GetReviewCommand
+##### struct GetMessageCommand
 
 - Must have fields:
-  - `review_id: ReviewId` (`env = "CRS_REVIEW_ID"`)
+  - `message_id: MessageId` (`env = "CRS_MESSAGE_ID"`)
 
-##### struct PushGetReviewCommand
+##### struct PushGetMessageCommand
 
 - Must have fields:
   - `parts: Vec<String>`
 - Must have methods:
   - `run`
-    - `let item = ReviewItem::try_from(parts)`
-    - `let review = load::<Review>::(reviews, review_id)`
-    - `review.push(item)`
-    - `save(reviews, review_id, review)`
+    - `let item = MessageItem::try_from(parts)`
+    - `let message = load::<Message>::(messages, message_id)`
+    - `message.push(item)`
+    - `save(messages, message_id, message)`
 
-##### struct RenderGetReviewCommand
+##### struct RenderGetMessageCommand
 
 - Must have methods:
   - `run`
-    - `let review = load::<Review>::(reviews, review_id)`
-    - `review.write_as_markdown(&mut stdout)`
+    - `let message = load::<Message>::(messages, message_id)`
+    - `message.write_as_markdown(&mut stdout)`
 
 ##### struct GitApprovalSet
 
@@ -1011,12 +1011,12 @@ Notes:
   - `commit_hash: GitOid`
   - `path: PathBuf`
 
-##### struct Review
+##### struct Message
 
 - Must have fields:
-  - `items: Vec<ReviewItem>`
+  - `items: Vec<MessageItem>`
 
-##### struct ReviewItem
+##### struct MessageItem
 
 - Must have fields:
   - `quote: Option<String>`
@@ -1028,27 +1028,27 @@ Notes:
       - Must write a newline
     - Must write `comment`
 
-##### impl TryFrom<Vec<String>> for ReviewItem
+##### impl TryFrom<Vec<String>> for MessageItem
 
 - Must have functions:
   - `try_from`
     - `match parts.len()`
       - 0 => `Err`
-      - 1 => `ReviewItem::new(None, parts[0])`
-      - 2 => `ReviewItem::new(Some(parts[0]), parts[1])`
+      - 1 => `MessageItem::new(None, parts[0])`
+      - 2 => `MessageItem::new(Some(parts[0]), parts[1])`
       - _ => `Err`
 
-##### struct SourceReview
+##### struct Review
 
 - Must have fields:
-  - `items: Vec<SourceReviewItem>`
+  - `items: Vec<ReviewItem>`
 - Must have methods:
   - `write_as_markdown(writer: &mut impl Write, source: &str)`
     - Must iterate items
       - Must call `item.write_as_markdown`
     - Must separate the items with a horizontal line ("-----")
 
-##### struct SourceReviewItem
+##### struct ReviewItem
 
 - Must have fields:
   - `interval: CharInterval`
