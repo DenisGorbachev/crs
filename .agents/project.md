@@ -298,7 +298,18 @@ Notes:
 ### struct Message
 
 - Must have fields:
+  - `destination: Option<MessageDestination>`
   - `items: Vec<MessageItem>`
+
+### enum MessageDestination
+
+- Must have variants:
+  - `Codex(CodexMessageDestination)`
+
+### struct CodexMessageDestination
+
+- Must have fields:
+  - `thread_id: CodexThreadId`
 
 ### struct MessageItem
 
