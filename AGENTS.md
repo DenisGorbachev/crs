@@ -2925,6 +2925,7 @@ exclude.workspace = true
 [dependencies]
 strum.workspace = true
 clap.workspace = true
+serde = { workspace = true, features = ["derive"] }
 
 [lints]
 workspace = true

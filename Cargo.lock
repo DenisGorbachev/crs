@@ -10857,6 +10857,7 @@ name = "spec"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "serde",
  "strum 0.28.0",
 ]
 
