@@ -744,6 +744,7 @@ use tokio::process::Command;
 use globset::Glob;
 use pulldown_cmark::{OffsetIter, Options};
 use save_load::Format;
+use nu_path::{RelativePath, RelativePathBuf};
 ```
 
 #### crs package
@@ -752,6 +753,7 @@ use save_load::Format;
   - `globset`
   - `save-load`
   - `pulldown-cmark`
+  - `nu-path`
 
 ##### struct Command
 
@@ -1109,6 +1111,33 @@ Notes:
     - Must ignore `MarkdownEvent::End` events
     - Must select occurrence `occurrence` among the events whose source range equals `source_range`
     - Must return the selected `MarkdownEvent` and its source range
+
+##### enum PathBufPrefix
+
+- Must have variants:
+  - `Root`
+  - `Home`
+  - `Empty`
+- Must have methods:
+  - `resolve(self, home: &Path, target: &Path)`
+
+##### struct PrefixedPathBuf
+
+- Must have at least the following derives:
+  - `new`
+  - `Deref`
+  - `AsRef`
+  - `Borrow`
+- Must have fields:
+  - `prefix: PathBufPrefix`
+  - `value: RelativePathBuf`
+    - #[deref]
+    - #[as_ref]
+    - #[borrow]
+- Must have methods:
+  - `resolve(&self, home: &Path)`
+
+##### impl TryFrom<(PathBufPrefix, PathBuf)> for PrefixedPathBuf
 
 ##### file src/shell/helpers.sh
 
