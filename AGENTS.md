@@ -749,6 +749,9 @@ use nu_path::{RelativePath, RelativePathBuf};
 
 #### crs package
 
+##### file Cargo.toml
+
+- Codex dependencies have the same version
 - Must have dependencies:
   - `globset`
   - `save-load`
@@ -823,50 +826,36 @@ use nu_path::{RelativePath, RelativePathBuf};
 ##### struct CodexCommand
 
 - Must have fields:
-  - `app_server: CodexAppServerLocator` (required, `--app-server`, env: `CRS_CODEX_APP_SERVER`)
-  - `app_server_auth_token: Option<SecretString>` (`--app-server-auth-token`, env: `CRS_CODEX_APP_SERVER_AUTH_TOKEN`)
+  - `app_server: RemoteAppServerEndpoint` (required, `--app-server`, env: `CRS_CODEX_APP_SERVER`, parser: `parse_remote_app_server_endpoint`)
   - `subcommand: CodexSubcommand`
 - Must have methods:
   - `run`
-    - Must connect to the existing app-server identified by `app_server` using one `RemoteAppServerClient` from `codex-app-server-client`
-    - Must complete the `initialize` request and `initialized` notification before dispatching the selected subcommand
-      - Must identify the client as `crs` with the CRS package version
-      - Must enable the experimental API capability required by thread item pagination
-    - Must pass a borrowed `RemoteAppServerRequestHandle` through the selected subcommands
-    - Must drain connection events while requests are running so notifications cannot accumulate indefinitely
-    - Must reject unsupported server-initiated requests with a JSON-RPC error
-    - Must close the client connection on both success and failure without stopping the external app-server
-      - If both the subcommand and connection cleanup fail, the returned error must retain both failures
-    - Must not load Codex configuration, open `state_db`, construct a `LocalThreadStore`, or read Codex history files in the CRS process
+    - Must connect using `RemoteAppServerClient::connect` from `codex-app-server-client`
+      - Must use `crs` and the CRS package version as the client identity
+      - Must use `RemoteAppServerConnectArgs` with `experimental_api = true`
+    - Must pass `&mut RemoteAppServerClient` to the selected subcommand
+    - Must shut down the client connection after the subcommand completes, including on failure
     - Must not spawn an app-server or fall back to local storage when connection or protocol operations fail
 
 Notes:
 
 - Codex subcommands must use the app-server JSON-RPC API with request and response types from `codex-app-server-protocol`
-- Codex client and protocol crates must remain pinned to the same Codex release, initially `v0.153.4`
-- Authentication tokens must use a secret type; their values must be hidden from CLI help and remain redacted in debug output and errors
+- Request-response operations must use `client.request_typed::<Response>(request).await`; `next_event()` is only needed by subcommands that consume notifications or server-initiated requests
 - Directory filters describe paths on the app-server host
 
-##### struct CodexAppServerLocator
+##### fn parse_remote_app_server_endpoint
 
-- Must represent a validated app-server endpoint using `url::Url`
-- Must implement `FromStr`, `Serialize`, and validated `Deserialize`
+- Must parse a CLI argument into `codex_app_server_client::RemoteAppServerEndpoint`
 - Must accept:
-  - `ws://HOST[:PORT][/PATH]` for a WebSocket endpoint
-  - `wss://HOST[:PORT][/PATH]` for a TLS WebSocket endpoint
-  - `unix:///ABSOLUTE/PATH` for a WebSocket connection over a local Unix socket
-- Must preserve the WebSocket endpoint path and query when connecting
-- Must reject unsupported schemes, WebSocket URLs without a host, URL credentials, fragments, and Unix locators without an absolute socket path or with an authority or query
-- Must not assume a port, Codex home directory, or default socket path when the locator is omitted
-- Must interpret a Unix socket path on the CRS host; remote servers are reachable through WebSocket URLs, including externally configured tunnels
+  - `ws://HOST[:PORT][/PATH]` and `wss://HOST[:PORT][/PATH]` as `WebSocket`, validated with `url::Url`, preserving path and query, with `auth_token: None`
+  - `unix:///ABSOLUTE/PATH` as `UnixSocket`, using `AbsolutePathBuf` for a socket on the CRS host
+- Must reject unsupported schemes, URL credentials, fragments, and Unix locators with an authority or query
 
-Examples:
+Notes:
 
-```shell
-crs codex --app-server ws://127.0.0.1:4500 thread filter
-crs codex --app-server wss://codex.example.com/rpc thread filter
-crs codex --app-server unix:///run/user/1000/codex.sock thread filter
-```
+- Host access to a sandbox app-server can use a bind mount of the Codex control-socket directory when the container runtime supports host access to Unix sockets
+- Otherwise, host access can use SSH local Unix-socket forwarding from a host socket to the existing sandbox control socket
+- Mounts and forwarding are configured outside CRS; SSH forwarding requires `AllowStreamLocalForwarding local` in the sandbox SSH configuration
 
 ##### struct ThreadCodexCommand
 
@@ -874,7 +863,7 @@ crs codex --app-server unix:///run/user/1000/codex.sock thread filter
   - `subcommand: ThreadCodexSubcommand`
 - Must have methods:
   - `run`
-    - Must pass the borrowed app-server request handle to the selected subcommand
+    - Must pass the mutable app-server client to the selected subcommand
 
 ##### struct GetThreadCodexCommand
 
@@ -883,7 +872,7 @@ crs codex --app-server unix:///run/user/1000/codex.sock thread filter
   - `subcommand: GetThreadCodexSubcommand`
 - Must have methods:
   - `run`
-    - Must pass the borrowed app-server request handle and `thread_id` to the selected subcommand
+    - Must pass the mutable app-server client and `thread_id` to the selected subcommand
 
 ##### struct RenderAgentMessageGetThreadCodexCommand
 
@@ -892,37 +881,35 @@ crs codex --app-server unix:///run/user/1000/codex.sock thread filter
 - Must have methods:
   - `run`
     - Must call `thread/items/list` with `ThreadItemsListParams` and decode `ThreadItemsListResponse`
-      - Must set `thread_id`, omit `turn_id` and `cursor`, and request descending order
-      - Must request the maximum item page size supported by the pinned protocol release
+      - Must set `thread_id`, omit `turn_id`, start without a cursor, and set `sort_direction: Some(Desc)`
+      - Must request `u32::MAX` items and let the server apply its page-size cap
     - Must filter the returned `ThreadItemEntry.item` values by the `AgentMessage` variant
-    - Must get the agent message at `index` within the first returned page, newest first
-      - The index counts agent messages, not all items
-      - Must not follow `next_cursor`; the server's page limit applies even when more history exists
-      - Must return an error identifying the thread and index when the page contains too few agent messages
+    - Must get the agent message at `index` across pages, newest first
+      - The index counts agent messages across pages, not all items
+      - Must stop after the first page when it contains the requested agent message
+      - Otherwise, must follow `next_cursor` lazily until the requested agent message is found or history is exhausted
+      - Must return an error when history contains too few agent messages
     - Must write the text of the agent message to `stdout`
 
 ##### struct FilterThreadCodexCommand
 
 - Must have fields:
   - `search_term: Option<String>`
-  - `cwd_filters: Option<Vec<PathBuf>>`
+  - `cwd_filters: Vec<String>`
   - `offset: usize` (`default_value_t = 0`)
   - `limit: usize` (`default_value_t = 10`)
 - Must have methods:
   - `run`
     - Must call `thread/list` with `ThreadListParams` and decode `ThreadListResponse`
       - Must sort by creation time descending
-      - Must include all supported source kinds explicitly because an omitted or empty `source_kinds` restricts results to interactive sources
+      - Must include all source categories explicitly because an omitted or empty `source_kinds` restricts results to interactive sources; `SubAgent` includes every subagent subtype
       - Must include all model providers and non-archived threads across all sections and projects
-      - Must pass `search_term` and all `cwd_filters` to the server; omitted directory filters must search all directories
-      - Must preserve `use_state_db_only = true` as a server request option; only the app-server accesses its state database
+      - Must pass `search_term` and `cwd_filters` to the server
+      - Must set `use_state_db_only = true`
     - Must follow `next_cursor` lazily, skip `offset` matching threads, and write at most `limit` threads to `stdout` newest first via `write_jsonl`
-      - Must emit each app-server `Thread` object using its protocol JSON representation instead of the previous `StoredThread` representation
-      - Must stop after reaching `limit` or exhausting the cursor
+      - Must emit each app-server `Thread` object using its protocol JSON representation
       - A zero `limit` must emit nothing and make no `thread/list` requests
-    - Must cap the requested page size at offset plus limit and the server's maximum page size for the pinned protocol release
-      - Must use checked arithmetic and checked conversions to the protocol's `u32` limit
-    - Must adapt the reusable pagination helpers to protocol request and response types and remove obsolete local-store adapters and page-size helpers
+    - Must cap the requested page size at offset plus limit and `u32::MAX`, using checked arithmetic and conversions; the server may cap the page further
 
 ##### struct MessageCommand
 
@@ -2918,7 +2905,6 @@ derive-getters = { version = "0.5.0", features = ["auto_copy_getters"] }
 derive-new = "0.7.0"
 derive_more = { version = "2.1.1", features = ["full"] }
 errgonomic = { git = "https://github.com/DenisGorbachev/errgonomic" }
-itertools = "0.15.0"
 standard-traits = { git = "https://github.com/DenisGorbachev/standard-traits" }
 strum = { version = "0.28.0", features = ["derive"] }
 stub-macro = { version = "0.3.1" }
@@ -2937,9 +2923,10 @@ codex-protocol = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4
 # serde_json requires serde >= 1.0.220; retain the compatible lockfile version instead of pinning 1.0.0.
 serde = "1.0.0"
 serde_json = "1.0.0"
-codex-core = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4", version = "0.153.4" }
-codex-rollout = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4", version = "0.153.4" }
-codex-thread-store = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4", version = "0.153.4" }
+codex-app-server-client = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4", version = "0.153.4" }
+codex-utils-absolute-path = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4", version = "0.153.4" }
+# aws-config requires url >= 2.5.4; retain the compatible lockfile version instead of pinning 2.5.0.
+url = "2.5.0"
 codex-app-server-protocol = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4", version = "0.153.4" }
 interval-zoo = { git = "https://github.com/DenisGorbachev/interval-zoo" }
 
@@ -2979,16 +2966,15 @@ timestamp-please.workspace = true
 fjall.workspace = true
 rkyv.workspace = true
 pulldown-cmark.workspace = true
-uuid.workspace = true
+uuid = { workspace = true, features = ["v4"] }
 codex-protocol.workspace = true
 serde_json.workspace = true
-codex-core.workspace = true
-codex-rollout.workspace = true
-codex-thread-store.workspace = true
 codex-app-server-protocol.workspace = true
 interval-zoo.workspace = true
 serde.workspace = true
-itertools.workspace = true
+codex-app-server-client.workspace = true
+codex-utils-absolute-path.workspace = true
+url.workspace = true
 
 [patch.crates-io]
 # `codex-thread-store` relies on the fork-only proxy support used by the Codex workspace.

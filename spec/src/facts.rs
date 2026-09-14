@@ -35,5 +35,5 @@ pub fn codex_sessions_are_on_sandbox_volume() -> bool {
 }
 
 pub fn codex_sessions_must_be_accessed_via_wyrc() -> bool {
-    codex_sessions_are_on_sandbox_volume()
+    false
 }

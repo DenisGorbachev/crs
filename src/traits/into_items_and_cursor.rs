@@ -14,13 +14,13 @@ macro_rules! impl_into_items_and_cursor {
             type Cursor = $cursor;
 
             fn into_items_and_cursor(self) -> (Self::Items, Option<Self::Cursor>) {
-                (self.items, self.next_cursor)
+                (self.data, self.next_cursor)
             }
         }
     };
 }
 
-mod thread_page;
-pub use thread_page::*;
-mod item_page;
-pub use item_page::*;
+mod thread_list_response;
+pub use thread_list_response::*;
+mod thread_items_list_response;
+pub use thread_items_list_response::*;

@@ -52,7 +52,6 @@ derive-getters = { version = "0.5.0", features = ["auto_copy_getters"] }
 derive-new = "0.7.0"
 derive_more = { version = "2.1.1", features = ["full"] }
 errgonomic = { git = "https://github.com/DenisGorbachev/errgonomic" }
-itertools = "0.15.0"
 standard-traits = { git = "https://github.com/DenisGorbachev/standard-traits" }
 strum = { version = "0.28.0", features = ["derive"] }
 stub-macro = { version = "0.3.1" }
@@ -71,9 +70,10 @@ codex-protocol = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4
 # serde_json requires serde >= 1.0.220; retain the compatible lockfile version instead of pinning 1.0.0.
 serde = "1.0.0"
 serde_json = "1.0.0"
-codex-core = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4", version = "0.153.4" }
-codex-rollout = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4", version = "0.153.4" }
-codex-thread-store = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4", version = "0.153.4" }
+codex-app-server-client = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4", version = "0.153.4" }
+codex-utils-absolute-path = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4", version = "0.153.4" }
+# aws-config requires url >= 2.5.4; retain the compatible lockfile version instead of pinning 2.5.0.
+url = "2.5.0"
 codex-app-server-protocol = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4", version = "0.153.4" }
 interval-zoo = { git = "https://github.com/DenisGorbachev/interval-zoo" }
 
@@ -113,16 +113,15 @@ timestamp-please.workspace = true
 fjall.workspace = true
 rkyv.workspace = true
 pulldown-cmark.workspace = true
-uuid.workspace = true
+uuid = { workspace = true, features = ["v4"] }
 codex-protocol.workspace = true
 serde_json.workspace = true
-codex-core.workspace = true
-codex-rollout.workspace = true
-codex-thread-store.workspace = true
 codex-app-server-protocol.workspace = true
 interval-zoo.workspace = true
 serde.workspace = true
-itertools.workspace = true
+codex-app-server-client.workspace = true
+codex-utils-absolute-path.workspace = true
+url.workspace = true
 
 [patch.crates-io]
 # `codex-thread-store` relies on the fork-only proxy support used by the Codex workspace.

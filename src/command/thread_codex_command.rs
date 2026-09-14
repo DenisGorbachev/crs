@@ -1,7 +1,7 @@
 use crate::{FilterThreadCodexCommand, FilterThreadCodexCommandRunError, GetThreadCodexCommand, GetThreadCodexCommandRunError};
 use ThreadCodexSubcommand::*;
 use clap::{Parser, Subcommand};
-use codex_thread_store::ThreadStore;
+use codex_app_server_client::RemoteAppServerClient;
 use errgonomic::handle;
 use std::process::ExitCode;
 use thiserror::Error;
@@ -20,14 +20,14 @@ pub enum ThreadCodexSubcommand {
 }
 
 impl ThreadCodexCommand {
-    pub async fn run(self, store: &(impl ThreadStore + ?Sized)) -> Result<ExitCode, ThreadCodexCommandRunError> {
+    pub async fn run(self, client: &mut RemoteAppServerClient) -> Result<ExitCode, ThreadCodexCommandRunError> {
         use ThreadCodexCommandRunError::*;
         let Self {
             subcommand,
         } = self;
         match subcommand {
-            Filter(command) => Ok(handle!(command.run(store).await, FilterThreadCodexCommandRunFailed)),
-            Get(command) => Ok(handle!(command.run(store).await, GetThreadCodexCommandRunFailed)),
+            Filter(command) => Ok(handle!(command.run(client).await, FilterThreadCodexCommandRunFailed)),
+            Get(command) => Ok(handle!(command.run(client).await, GetThreadCodexCommandRunFailed)),
         }
     }
 }

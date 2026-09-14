@@ -17,7 +17,7 @@ macro_rules! impl_set_next_cursor {
     };
 }
 
-mod list_threads_params;
-pub use list_threads_params::*;
-mod list_items_params;
-pub use list_items_params::*;
+mod thread_list_params;
+pub use thread_list_params::*;
+mod thread_items_list_params;
+pub use thread_items_list_params::*;

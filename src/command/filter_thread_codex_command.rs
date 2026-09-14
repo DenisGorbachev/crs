@@ -1,12 +1,12 @@
-use crate::{ListThreadsParams, PageStreamError, WriteJsonlError, list_threads_params_all_reverse, page_stream, write_jsonl};
+use crate::{PageStreamError, WriteJsonlError, list_threads_params_all_reverse, write_jsonl};
 use clap::Parser;
-use codex_thread_store::{StoredThread, ThreadStore, ThreadStoreError};
+use codex_app_server_client::{RemoteAppServerClient, TypedRequestError};
+use codex_app_server_protocol::{Thread, ThreadListParams, ThreadListResponse};
 use errgonomic::handle;
 use futures::future::ready;
 use futures::stream::iter;
 use futures::{StreamExt, TryStreamExt};
 use std::io::{self, Write, stdout};
-use std::path::PathBuf;
 use std::process::ExitCode;
 use thiserror::Error;
 
@@ -19,7 +19,7 @@ pub struct FilterThreadCodexCommand {
     pub search_term: Option<String>,
     /// Restrict threads to these working directories; omit to search all directories.
     #[arg(long, num_args = 1.., value_name = "PATH")]
-    pub cwd_filters: Option<Vec<PathBuf>>,
+    pub cwd_filters: Vec<String>,
     /// Number of matching threads to skip, starting with the newest.
     #[arg(long, default_value_t = 0)]
     pub offset: usize,
@@ -29,7 +29,7 @@ pub struct FilterThreadCodexCommand {
 }
 
 impl FilterThreadCodexCommand {
-    pub async fn run(self, store: &(impl ThreadStore + ?Sized)) -> Result<ExitCode, FilterThreadCodexCommandRunError> {
+    pub async fn run(self, client: &mut RemoteAppServerClient) -> Result<ExitCode, FilterThreadCodexCommandRunError> {
         use FilterThreadCodexCommandRunError::*;
         let Self {
             search_term,
@@ -38,12 +38,12 @@ impl FilterThreadCodexCommand {
             limit,
         } = self;
         let mut params = list_threads_params_all_reverse(cwd_filters, search_term);
-        params.page_size = offset
-            .checked_add(limit)
-            .unwrap_or(params.page_size)
-            .min(params.page_size);
+        params.limit = Some(match offset.checked_add(limit) {
+            Some(count) => u32::try_from(count).unwrap_or(u32::MAX),
+            None => u32::MAX,
+        });
         let mut skipped = 0..offset;
-        page_stream(store, params, ThreadStore::list_threads)
+        app_server_pages!(client, params, ThreadList, ThreadListResponse)
             .map(|result| {
                 let threads = handle!(result, PageStreamFailed);
                 Ok(iter(threads.into_iter().map(Ok)))
@@ -67,9 +67,9 @@ impl FilterThreadCodexCommand {
 #[derive(Error, Debug)]
 pub enum FilterThreadCodexCommandRunError {
     #[error("failed to read Codex threads")]
-    PageStreamFailed { source: PageStreamError<ListThreadsParams, ThreadStoreError> },
+    PageStreamFailed { source: PageStreamError<ThreadListParams, TypedRequestError> },
     #[error("failed to write a Codex thread to stdout")]
-    WriteJsonlFailed { source: WriteJsonlError<StoredThread> },
+    WriteJsonlFailed { source: WriteJsonlError<Thread> },
     #[error("failed to flush Codex threads to stdout")]
     FlushFailed { source: io::Error },
 }

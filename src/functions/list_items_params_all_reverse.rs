@@ -1,18 +1,13 @@
-use crate::thread_store_max_page_size;
-use codex_protocol::ThreadId;
-use codex_thread_store::ItemSortKey::*;
-use codex_thread_store::ListItemsParams;
-use codex_thread_store::SortDirection::*;
+use crate::CodexThreadId;
+use codex_app_server_protocol::SortDirection::*;
+use codex_app_server_protocol::ThreadItemsListParams;
 
-pub fn list_items_params_all_reverse(thread_id: ThreadId) -> ListItemsParams {
-    ListItemsParams {
-        page_size: thread_store_max_page_size(),
+pub fn list_items_params_all_reverse(thread_id: CodexThreadId) -> ThreadItemsListParams {
+    ThreadItemsListParams {
+        limit: Some(u32::MAX),
         cursor: None,
-        sort_key: CreatedAtOrdinal,
-        sort_direction: Desc,
-        thread_id,
+        sort_direction: Some(Desc),
+        thread_id: thread_id.to_string(),
         turn_id: None,
-        include_archived: true,
-        after_updated_at_ordinal: None,
     }
 }
