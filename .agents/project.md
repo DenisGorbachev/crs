@@ -128,12 +128,8 @@ Notes:
 
 - Codex subcommands must use the app-server JSON-RPC API with request and response types from `codex-app-server-protocol`
 - Codex client and protocol crates must remain pinned to the same Codex release, initially `v0.153.4`
-- The connected app-server must support the methods and fields used by the selected command; unsupported operations must produce an actionable error without local-storage fallback
-- Remove direct dependencies on `codex-core`, `codex-rollout`, and `codex-thread-store` when replacing their call sites; transitive dependencies of the upstream client are permitted
-- Connection and request errors must retain the locator, operation, request parameters where applicable, and underlying transport or JSON-RPC error, including the server error code, message, and data
 - Authentication tokens must use a secret type; their values must be hidden from CLI help and remain redacted in debug output and errors
-- Authentication tokens must be passed as WebSocket bearer authentication, subject to the upstream client's transport restrictions; supplying a token for a Unix socket must produce an error
-- Directory filters describe paths on the app-server host; CRS must not canonicalize them against its own filesystem or implicitly filter by its current directory
+- Directory filters describe paths on the app-server host
 
 ### struct CodexAppServerLocator
 
@@ -181,14 +177,13 @@ crs codex --app-server unix:///run/user/1000/codex.sock thread filter
   - `run`
     - Must call `thread/items/list` with `ThreadItemsListParams` and decode `ThreadItemsListResponse`
       - Must set `thread_id`, omit `turn_id` and `cursor`, and request descending order
-      - Must request the maximum item page size supported by the pinned protocol release, currently 100 items
+      - Must request the maximum item page size supported by the pinned protocol release
     - Must filter the returned `ThreadItemEntry.item` values by the `AgentMessage` variant
     - Must get the agent message at `index` within the first returned page, newest first
       - The index counts agent messages, not all items
       - Must not follow `next_cursor`; the server's page limit applies even when more history exists
       - Must return an error identifying the thread and index when the page contains too few agent messages
     - Must write the text of the agent message to `stdout`
-    - Must not resume the thread or start a turn
 
 ### struct FilterThreadCodexCommand
 
@@ -209,7 +204,7 @@ crs codex --app-server unix:///run/user/1000/codex.sock thread filter
       - Must emit each app-server `Thread` object using its protocol JSON representation instead of the previous `StoredThread` representation
       - Must stop after reaching `limit` or exhausting the cursor
       - A zero `limit` must emit nothing and make no `thread/list` requests
-    - Must cap the requested page size at offset plus limit and the server's maximum page size for the pinned protocol release, currently 100 threads
+    - Must cap the requested page size at offset plus limit and the server's maximum page size for the pinned protocol release
       - Must use checked arithmetic and checked conversions to the protocol's `u32` limit
     - Must adapt the reusable pagination helpers to protocol request and response types and remove obsolete local-store adapters and page-size helpers
 
