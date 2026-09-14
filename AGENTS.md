@@ -852,12 +852,6 @@ Notes:
   - `unix:///ABSOLUTE/PATH` as `UnixSocket`, using `AbsolutePathBuf` for a socket on the CRS host
 - Must reject unsupported schemes, URL credentials, fragments, and Unix locators with an authority or query
 
-Notes:
-
-- Host access to a sandbox app-server can use a bind mount of the Codex control-socket directory when the container runtime supports host access to Unix sockets
-- Otherwise, host access can use SSH local Unix-socket forwarding from a host socket to the existing sandbox control socket
-- Mounts and forwarding are configured outside CRS; SSH forwarding requires `AllowStreamLocalForwarding local` in the sandbox SSH configuration
-
 ##### struct ThreadCodexCommand
 
 - Must have fields:

@@ -35,5 +35,6 @@ pub fn codex_sessions_are_on_sandbox_volume() -> bool {
 }
 
 pub fn codex_sessions_must_be_accessed_via_wyrc() -> bool {
+    // CodexCommand already connects to app-servere
     false
 }
