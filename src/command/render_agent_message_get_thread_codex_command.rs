@@ -1,8 +1,8 @@
-use crate::{CodexThreadId, PageStreamError, list_items_params_all_reverse};
+use crate::{CodexThreadId, PageStreamError, list_items_params_all_reverse, page_stream};
 use clap::Parser;
 use codex_app_server_client::{RemoteAppServerClient, TypedRequestError};
 use codex_app_server_protocol::ThreadItem::*;
-use codex_app_server_protocol::{ThreadItemsListParams, ThreadItemsListResponse};
+use codex_app_server_protocol::{ClientRequest, RequestId, ThreadItemsListParams, ThreadItemsListResponse};
 use errgonomic::{handle, handle_opt};
 use futures::TryStreamExt;
 use futures::future::ready;
@@ -11,6 +11,7 @@ use std::io::{self, Write, stdout};
 use std::pin::pin;
 use std::process::ExitCode;
 use thiserror::Error;
+use uuid::Uuid;
 
 #[derive(Parser, Clone, Debug)]
 #[command(flatten_help = true)]
@@ -28,18 +29,23 @@ impl RenderAgentMessageGetThreadCodexCommand {
         } = self;
         let params = list_items_params_all_reverse(thread_id);
         let mut skipped = 0..index;
-        let messages = app_server_pages!(client, params, ThreadItemsList, ThreadItemsListResponse)
-            .map_ok(|items| {
-                iter(items.into_iter().filter_map(|entry| match entry.item {
-                    AgentMessage {
-                        text,
-                        ..
-                    } => Some(Ok::<_, PageStreamError<ThreadItemsListParams, TypedRequestError>>(text)),
-                    _ => None,
-                }))
+        let messages = page_stream(client, params, |client, params| {
+            client.request_typed::<ThreadItemsListResponse>(ClientRequest::ThreadItemsList {
+                request_id: RequestId::String(Uuid::new_v4().to_string()),
+                params,
             })
-            .try_flatten()
-            .try_skip_while(move |_| ready(Ok(skipped.next().is_some())));
+        })
+        .map_ok(|items| {
+            iter(items.into_iter().filter_map(|entry| match entry.item {
+                AgentMessage {
+                    text,
+                    ..
+                } => Some(Ok::<_, PageStreamError<ThreadItemsListParams, TypedRequestError>>(text)),
+                _ => None,
+            }))
+        })
+        .try_flatten()
+        .try_skip_while(move |_| ready(Ok(skipped.next().is_some())));
         let text = handle!(pin!(messages).try_next().await, TryNextFailed, thread_id, index);
         let text = handle_opt!(text, AgentMessageNotFound, thread_id, index);
         let mut stdout = stdout().lock();

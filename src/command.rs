@@ -37,19 +37,6 @@ pub enum CommandRunError {
     PrintCommandRunFailed { source: PrintCommandRunError },
 }
 
-macro_rules! app_server_pages {
-    ($client:expr, $params:expr, $request:ident, $response:ty) => {{
-        use codex_app_server_protocol::{ClientRequest, RequestId};
-        use uuid::Uuid;
-        $crate::page_stream($client, $params, |client, params| {
-            client.request_typed::<$response>(ClientRequest::$request {
-                request_id: RequestId::String(Uuid::new_v4().to_string()),
-                params,
-            })
-        })
-    }};
-}
-
 mod print_command;
 
 pub use print_command::*;

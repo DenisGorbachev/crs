@@ -1,7 +1,7 @@
-use crate::{PageStreamError, WriteJsonlError, list_threads_params_all_reverse, write_jsonl};
+use crate::{PageStreamError, WriteJsonlError, list_threads_params_all_reverse, page_stream, write_jsonl};
 use clap::Parser;
 use codex_app_server_client::{RemoteAppServerClient, TypedRequestError};
-use codex_app_server_protocol::{Thread, ThreadListParams, ThreadListResponse};
+use codex_app_server_protocol::{ClientRequest, RequestId, Thread, ThreadListParams, ThreadListResponse};
 use errgonomic::handle;
 use futures::future::ready;
 use futures::stream::iter;
@@ -9,6 +9,7 @@ use futures::{StreamExt, TryStreamExt};
 use std::io::{self, Write, stdout};
 use std::process::ExitCode;
 use thiserror::Error;
+use uuid::Uuid;
 
 /// Filter Codex threads, emitting JSONL newest first.
 #[derive(Parser, Clone, Debug)]
@@ -43,24 +44,29 @@ impl FilterThreadCodexCommand {
             None => u32::MAX,
         });
         let mut skipped = 0..offset;
-        app_server_pages!(client, params, ThreadList, ThreadListResponse)
-            .map(|result| {
-                let threads = handle!(result, PageStreamFailed);
-                Ok(iter(threads.into_iter().map(Ok)))
+        page_stream(client, params, |client, params| {
+            client.request_typed::<ThreadListResponse>(ClientRequest::ThreadList {
+                request_id: RequestId::String(Uuid::new_v4().to_string()),
+                params,
             })
-            .try_flatten()
-            .try_skip_while(move |_| ready(Ok(skipped.next().is_some())))
-            .take(limit)
-            .try_for_each(|thread| async move {
-                let mut stdout = stdout().lock();
-                handle!(write_jsonl(&mut stdout, thread), WriteJsonlFailed);
-                Ok(())
-            })
-            .await
-            .and_then(|()| {
-                handle!(stdout().flush(), FlushFailed);
-                Ok(ExitCode::SUCCESS)
-            })
+        })
+        .map(|result| {
+            let threads = handle!(result, PageStreamFailed);
+            Ok(iter(threads.into_iter().map(Ok)))
+        })
+        .try_flatten()
+        .try_skip_while(move |_| ready(Ok(skipped.next().is_some())))
+        .take(limit)
+        .try_for_each(|thread| async move {
+            let mut stdout = stdout().lock();
+            handle!(write_jsonl(&mut stdout, thread), WriteJsonlFailed);
+            Ok(())
+        })
+        .await
+        .and_then(|()| {
+            handle!(stdout().flush(), FlushFailed);
+            Ok(ExitCode::SUCCESS)
+        })
     }
 }
 

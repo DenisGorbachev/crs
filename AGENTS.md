@@ -765,7 +765,8 @@ use nu_path::{RelativePath, RelativePathBuf};
   - `config: PathBuf`
   - `db: PathBuf`
   - `user_id: UserId`
-  - `session_id: SessionId` (env: `CRS_SESSION_ID`)
+  - `session_id: SessionId`
+    - `#[clap(env = "CRS_SESSION_ID")]`
 - Must have methods:
   - `run`
     - `let config = Format::load_one_as(&config)`
@@ -827,8 +828,10 @@ use nu_path::{RelativePath, RelativePathBuf};
 ##### struct CodexCommand
 
 - Must have fields:
-  - `app_server: RemoteAppServerEndpoint` (required, `--app-server`, env: `CRS_CODEX_APP_SERVER`, parser: `parse_remote_app_server_endpoint`)
+  - `app_server: RemoteAppServerEndpoint`
+    - `#[clap(long, env = "CRS_CODEX_APP_SERVER", value_parser = codex_tui::resolve_remote_addr)]`
   - `subcommand: CodexSubcommand`
+    - `#[clap(subcommand)]`
 - Must have methods:
   - `run`
     - Must connect using `RemoteAppServerClient::connect` from `codex-app-server-client`
@@ -844,18 +847,11 @@ Notes:
 - Request-response operations must use `client.request_typed::<Response>(request).await`; `next_event()` is only needed by subcommands that consume notifications or server-initiated requests
 - Directory filters describe paths on the app-server host
 
-##### fn parse_remote_app_server_endpoint
-
-- Must parse a CLI argument into `codex_app_server_client::RemoteAppServerEndpoint`
-- Must accept:
-  - `ws://HOST[:PORT][/PATH]` and `wss://HOST[:PORT][/PATH]` as `WebSocket`, validated with `url::Url`, preserving path and query, with `auth_token: None`
-  - `unix:///ABSOLUTE/PATH` as `UnixSocket`, using `AbsolutePathBuf` for a socket on the CRS host
-- Must reject unsupported schemes, URL credentials, fragments, and Unix locators with an authority or query
-
 ##### struct ThreadCodexCommand
 
 - Must have fields:
   - `subcommand: ThreadCodexSubcommand`
+    - `#[clap(subcommand)]`
 - Must have methods:
   - `run`
     - Must pass the mutable app-server client to the selected subcommand
@@ -863,8 +859,10 @@ Notes:
 ##### struct GetThreadCodexCommand
 
 - Must have fields:
-  - `thread_id: CodexThreadId` (positional, env: `CRS_CODEX_THREAD_ID`)
+  - `thread_id: CodexThreadId`
+    - `#[clap(env = "CRS_CODEX_THREAD_ID")]`
   - `subcommand: GetThreadCodexSubcommand`
+    - `#[clap(subcommand)]`
 - Must have methods:
   - `run`
     - Must pass the mutable app-server client and `thread_id` to the selected subcommand
@@ -872,7 +870,8 @@ Notes:
 ##### struct RenderAgentMessageGetThreadCodexCommand
 
 - Must have fields:
-  - `index: usize` (`default_value_t = 0`)
+  - `index: usize`
+    - `#[clap(long, default_value_t)]`
 - Must have methods:
   - `run`
     - Must call `thread/items/list` with `ThreadItemsListParams` and decode `ThreadItemsListResponse`
@@ -890,9 +889,13 @@ Notes:
 
 - Must have fields:
   - `search_term: Option<String>`
+    - `#[clap(long)]`
   - `cwd_filters: Vec<String>`
-  - `offset: usize` (`default_value_t = 0`)
-  - `limit: usize` (`default_value_t = 10`)
+    - `#[clap(long, num_args = 1..)]`
+  - `offset: usize`
+    - `#[clap(long, default_value_t)]`
+  - `limit: usize`
+    - `#[clap(long, default_value_t = 10)]`
 - Must have methods:
   - `run`
     - Must call `thread/list` with `ThreadListParams` and decode `ThreadListResponse`
@@ -924,7 +927,8 @@ Notes:
 ##### struct GetMessageCommand
 
 - Must have fields:
-  - `message_id: MessageId` (`env = "CRS_MESSAGE_ID"`)
+  - `message_id: MessageId`
+    - `#[clap(env = "CRS_MESSAGE_ID")]`
 
 ##### struct PushGetMessageCommand
 
@@ -947,8 +951,9 @@ Notes:
 ##### struct GitApprovalSet
 
 - Must have fields:
-  - `value: bool` (positional)
-  - `path: PathBuf` (positional)
+  - `value: bool`
+    - `#[clap(action = clap::ArgAction::Set)]`
+  - `path: PathBuf`
   - `commit: Option<GitCommitHash>`
 - Must have methods:
   - `run`
@@ -2919,9 +2924,7 @@ codex-protocol = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4
 serde = "1.0.0"
 serde_json = "1.0.0"
 codex-app-server-client = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4", version = "0.153.4" }
-codex-utils-absolute-path = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4", version = "0.153.4" }
-# aws-config requires url >= 2.5.4; retain the compatible lockfile version instead of pinning 2.5.0.
-url = "2.5.0"
+codex-tui = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4", version = "0.153.4" }
 codex-app-server-protocol = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4", version = "0.153.4" }
 interval-zoo = { git = "https://github.com/DenisGorbachev/interval-zoo" }
 
@@ -2968,10 +2971,11 @@ codex-app-server-protocol.workspace = true
 interval-zoo.workspace = true
 serde.workspace = true
 codex-app-server-client.workspace = true
-codex-utils-absolute-path.workspace = true
-url.workspace = true
+codex-tui.workspace = true
 
 [patch.crates-io]
+# `codex-tui` requires the buffered-input APIs from the Codex workspace's crossterm fork.
+crossterm = { git = "https://github.com/openai-oss-forks/crossterm", rev = "45fecb9508105988f42fe6ff0441783ed3717f92" }
 # `codex-thread-store` relies on the fork-only proxy support used by the Codex workspace.
 tokio-tungstenite = { git = "https://github.com/openai-oss-forks/tokio-tungstenite", rev = "0e5b2d73aa18dd9f0a50ee9ff199d5aef7594186" }
 tungstenite = { git = "https://github.com/openai-oss-forks/tungstenite-rs", rev = "4fffad30fe373adbdcffab9545e9e9bf4f2fc19f" }

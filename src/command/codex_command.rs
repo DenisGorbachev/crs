@@ -1,7 +1,8 @@
-use crate::{ThreadCodexCommand, ThreadCodexCommandRunError, parse_remote_app_server_endpoint};
+use crate::{ThreadCodexCommand, ThreadCodexCommandRunError};
 use CodexSubcommand::*;
 use clap::{Parser, Subcommand};
 use codex_app_server_client::{DEFAULT_IN_PROCESS_CHANNEL_CAPACITY, RemoteAppServerClient, RemoteAppServerConnectArgs, RemoteAppServerEndpoint};
+use codex_tui::resolve_remote_addr;
 use errgonomic::handle;
 use std::io;
 use std::process::ExitCode;
@@ -10,7 +11,7 @@ use thiserror::Error;
 #[derive(Parser, Clone, Debug)]
 #[command(flatten_help = true)]
 pub struct CodexCommand {
-    #[arg(long, env = "CRS_CODEX_APP_SERVER", value_parser = parse_remote_app_server_endpoint, value_name = "URL")]
+    #[arg(long, env = "CRS_CODEX_APP_SERVER", value_parser = resolve_remote_addr, value_name = "URL")]
     pub app_server: RemoteAppServerEndpoint,
     #[command(subcommand)]
     pub subcommand: CodexSubcommand,

@@ -38,5 +38,5 @@ where
 #[derive(Error, Debug)]
 pub enum PageStreamError<P, E> {
     #[error("failed to fetch a page")]
-    FetchPageFailed { source: E, params: Box<P> },
+    FetchPageFailed { source: Box<E>, params: Box<P> },
 }

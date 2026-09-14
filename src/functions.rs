@@ -24,5 +24,3 @@ mod unwrap_or_current_dir;
 pub use unwrap_or_current_dir::*;
 mod page_stream;
 pub use page_stream::*;
-mod parse_remote_app_server_endpoint;
-pub use parse_remote_app_server_endpoint::*;
