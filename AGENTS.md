@@ -823,21 +823,62 @@ use nu_path::{RelativePath, RelativePathBuf};
 ##### struct CodexCommand
 
 - Must have fields:
-  - `dir: Option<PathBuf>` /// Scope for codex commands (defaults to current dir)
+  - `app_server: CodexAppServerLocator` (required, `--app-server`, env: `CRS_CODEX_APP_SERVER`)
+  - `app_server_auth_token: Option<SecretString>` (`--app-server-auth-token`, env: `CRS_CODEX_APP_SERVER_AUTH_TOKEN`)
   - `subcommand: CodexSubcommand`
 - Must have methods:
   - `run`
-    - Must load the Codex config, construct one `LocalThreadStore`, and pass a borrowed `ThreadStore` through the selected subcommands
+    - Must connect to the existing app-server identified by `app_server` using one `RemoteAppServerClient` from `codex-app-server-client`
+    - Must complete the `initialize` request and `initialized` notification before dispatching the selected subcommand
+      - Must identify the client as `crs` with the CRS package version
+      - Must enable the experimental API capability required by thread item pagination
+    - Must pass a borrowed `RemoteAppServerRequestHandle` through the selected subcommands
+    - Must drain connection events while requests are running so notifications cannot accumulate indefinitely
+    - Must reject unsupported server-initiated requests with a JSON-RPC error
+    - Must close the client connection on both success and failure without stopping the external app-server
+      - If both the subcommand and connection cleanup fail, the returned error must retain both failures
+    - Must not load Codex configuration, open `state_db`, construct a `LocalThreadStore`, or read Codex history files in the CRS process
+    - Must not spawn an app-server or fall back to local storage when connection or protocol operations fail
 
 Notes:
 
-- Codex subcommands should use internal codex crates directly
-- Codex subcommands must drop backwards compatibility for codex versions less than `v0.150.0`
+- Codex subcommands must use the app-server JSON-RPC API with request and response types from `codex-app-server-protocol`
+- Codex client and protocol crates must remain pinned to the same Codex release, initially `v0.153.4`
+- The connected app-server must support the methods and fields used by the selected command; unsupported operations must produce an actionable error without local-storage fallback
+- Remove direct dependencies on `codex-core`, `codex-rollout`, and `codex-thread-store` when replacing their call sites; transitive dependencies of the upstream client are permitted
+- Connection and request errors must retain the locator, operation, request parameters where applicable, and underlying transport or JSON-RPC error, including the server error code, message, and data
+- Authentication tokens must use a secret type; their values must be hidden from CLI help and remain redacted in debug output and errors
+- Authentication tokens must be passed as WebSocket bearer authentication, subject to the upstream client's transport restrictions; supplying a token for a Unix socket must produce an error
+- Directory filters describe paths on the app-server host; CRS must not canonicalize them against its own filesystem or implicitly filter by its current directory
+
+##### struct CodexAppServerLocator
+
+- Must represent a validated app-server endpoint using `url::Url`
+- Must implement `FromStr`, `Serialize`, and validated `Deserialize`
+- Must accept:
+  - `ws://HOST[:PORT][/PATH]` for a WebSocket endpoint
+  - `wss://HOST[:PORT][/PATH]` for a TLS WebSocket endpoint
+  - `unix:///ABSOLUTE/PATH` for a WebSocket connection over a local Unix socket
+- Must preserve the WebSocket endpoint path and query when connecting
+- Must reject unsupported schemes, WebSocket URLs without a host, URL credentials, fragments, and Unix locators without an absolute socket path or with an authority or query
+- Must not assume a port, Codex home directory, or default socket path when the locator is omitted
+- Must interpret a Unix socket path on the CRS host; remote servers are reachable through WebSocket URLs, including externally configured tunnels
+
+Examples:
+
+```shell
+crs codex --app-server ws://127.0.0.1:4500 thread filter
+crs codex --app-server wss://codex.example.com/rpc thread filter
+crs codex --app-server unix:///run/user/1000/codex.sock thread filter
+```
 
 ##### struct ThreadCodexCommand
 
 - Must have fields:
   - `subcommand: ThreadCodexSubcommand`
+- Must have methods:
+  - `run`
+    - Must pass the borrowed app-server request handle to the selected subcommand
 
 ##### struct GetThreadCodexCommand
 
@@ -846,7 +887,7 @@ Notes:
   - `subcommand: GetThreadCodexSubcommand`
 - Must have methods:
   - `run`
-    - Must pass `thread_id` to the selected subcommand
+    - Must pass the borrowed app-server request handle and `thread_id` to the selected subcommand
 
 ##### struct RenderAgentMessageGetThreadCodexCommand
 
@@ -854,11 +895,16 @@ Notes:
   - `index: usize` (`default_value_t = 0`)
 - Must have methods:
   - `run`
-    - `let params = list_items_params_all_reverse(thread_id)`
-    - Must call `store.list_items(params)`
-    - Must filter by `AgentMessage` variant
-    - Must get the agent message at `index` within the first page, newest first
+    - Must call `thread/items/list` with `ThreadItemsListParams` and decode `ThreadItemsListResponse`
+      - Must set `thread_id`, omit `turn_id` and `cursor`, and request descending order
+      - Must request the maximum item page size supported by the pinned protocol release, currently 100 items
+    - Must filter the returned `ThreadItemEntry.item` values by the `AgentMessage` variant
+    - Must get the agent message at `index` within the first returned page, newest first
+      - The index counts agent messages, not all items
+      - Must not follow `next_cursor`; the server's page limit applies even when more history exists
+      - Must return an error identifying the thread and index when the page contains too few agent messages
     - Must write the text of the agent message to `stdout`
+    - Must not resume the thread or start a turn
 
 ##### struct FilterThreadCodexCommand
 
@@ -869,9 +915,19 @@ Notes:
   - `limit: usize` (`default_value_t = 10`)
 - Must have methods:
   - `run`
-    - `let params = list_threads_params_all_reverse(cwd_filters, search_term)`
-    - Must paginate matching threads, skip `offset` threads, and write at most `limit` threads to `stdout` newest first via `write_jsonl`
-    - Must cap the requested page size at offset plus limit and the store's maximum page size
+    - Must call `thread/list` with `ThreadListParams` and decode `ThreadListResponse`
+      - Must sort by creation time descending
+      - Must include all supported source kinds explicitly because an omitted or empty `source_kinds` restricts results to interactive sources
+      - Must include all model providers and non-archived threads across all sections and projects
+      - Must pass `search_term` and all `cwd_filters` to the server; omitted directory filters must search all directories
+      - Must preserve `use_state_db_only = true` as a server request option; only the app-server accesses its state database
+    - Must follow `next_cursor` lazily, skip `offset` matching threads, and write at most `limit` threads to `stdout` newest first via `write_jsonl`
+      - Must emit each app-server `Thread` object using its protocol JSON representation instead of the previous `StoredThread` representation
+      - Must stop after reaching `limit` or exhausting the cursor
+      - A zero `limit` must emit nothing and make no `thread/list` requests
+    - Must cap the requested page size at offset plus limit and the server's maximum page size for the pinned protocol release, currently 100 threads
+      - Must use checked arithmetic and checked conversions to the protocol's `u32` limit
+    - Must adapt the reusable pagination helpers to protocol request and response types and remove obsolete local-store adapters and page-size helpers
 
 ##### struct MessageCommand
 
