@@ -9,6 +9,13 @@ pub enum CodexCommunicationProtocol {
 }
 
 impl CodexCommunicationProtocol {
+    pub fn is_recommended_by_devs(self) -> bool {
+        match self {
+            AppServer => true,
+            HomeDir => false,
+        }
+    }
+
     pub fn works_over_ssh(self) -> bool {
         match self {
             AppServer => true,
