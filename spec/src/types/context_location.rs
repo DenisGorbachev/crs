@@ -1,14 +1,14 @@
 #[allow(unused_imports)]
-use ContextLocation::*;
+use ContextStorage::*;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
 #[derive(Display, EnumIter, Ord, PartialOrd, Eq, PartialEq, Hash, Clone, Copy, Debug)]
-pub enum ContextLocation {
+pub enum ContextStorage {
     Database,
-    ShellExportedVars,
+    ShellGlobalVarMap,
 }
 
-impl ContextLocation {
+impl ContextStorage {
     pub fn decide() -> Option<Self> {
         Self::iter().find(|x| Self::iter().all(|other| x.subsumes(other)))
     }
@@ -16,23 +16,26 @@ impl ContextLocation {
     /// Must be reflexive
     pub fn subsumes(self, other: Self) -> bool {
         match (self, other) {
-            (Database, ShellExportedVars) => true,
+            (Database, ShellGlobalVarMap) => {
+                // User can set CRS_CONTEXT_ID to switch context
+                true
+            }
             (Database, Database) => true,
-            (ShellExportedVars, Database) => false,
-            (ShellExportedVars, ShellExportedVars) => true,
+            (ShellGlobalVarMap, Database) => false,
+            (ShellGlobalVarMap, ShellGlobalVarMap) => true,
         }
     }
 
     pub fn is_available_in_new_shell(self) -> bool {
         match self {
-            ShellExportedVars => false,
+            ShellGlobalVarMap => false,
             Database => true,
         }
     }
 
     pub fn supports_multiple_contexts(self) -> bool {
         match self {
-            ShellExportedVars => true,
+            ShellGlobalVarMap => true,
             Database => {
                 // just create multiple Context values
                 true
@@ -42,7 +45,7 @@ impl ContextLocation {
 
     pub fn supports_inheritance(self) -> bool {
         match self {
-            ShellExportedVars => false,
+            ShellGlobalVarMap => false,
             Database => {
                 // can implement it
                 true
