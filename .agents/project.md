@@ -50,11 +50,13 @@ use nu_path::{RelativePath, RelativePathBuf};
   - `user_id: UserId`
   - `session_id: SessionId`
     - `#[clap(env = "CRS_SESSION_ID")]`
+  - `editor: Option<OsString>`
 - Must have methods:
   - `run`
     - `let config = Format::load_one_as(&config)`
     - `let db = Db::open(db_config)`
     - `let now = Timestamp::now()`
+    - `let editor = editor_var_os(editor)`
 
 ### struct ShowCommand
 
@@ -338,7 +340,7 @@ Notes:
 
 - Must have fields:
   - `destination: Option<MessageDestination>`
-  - `items: Vec<MessageItem>`
+  - `items: Vec<String>`
 
 ### enum MessageDestination
 

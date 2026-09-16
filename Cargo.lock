@@ -13514,7 +13514,7 @@ dependencies = [
 [[package]]
 name = "timestamp-please"
 version = "0.2.0"
-source = "git+https://github.com/DenisGorbachev/timestamp-please#6de25655c95361ec75155f879287c92e0f26ab32"
+source = "git+https://github.com/DenisGorbachev/timestamp-please#0e668146a8acfbfe9db9e820f1e7e60439d92ed2"
 dependencies = [
  "errgonomic 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "itoa",
