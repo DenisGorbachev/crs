@@ -215,15 +215,14 @@ Notes:
   - `message_id: MessageId`
     - `#[clap(env = "CRS_MESSAGE_ID")]`
 
-### struct PushGetMessageCommand
+### struct ExtendGetMessageCommand
 
 - Must have fields:
-  - `parts: Vec<String>`
+  - `items: Vec<String>`
 - Must have methods:
   - `run`
-    - `let item = MessageItem::try_from(parts)`
     - `let message = load::<Message>::(messages, message_id)`
-    - `message.push(item)`
+    - `message.extend(items)`
     - `save(messages, message_id, message)`
 
 ### struct RenderGetMessageCommand
@@ -341,6 +340,9 @@ Notes:
 - Must have fields:
   - `destination: Option<MessageDestination>`
   - `items: Vec<String>`
+- Must have methods:
+  - `write_as_markdown`
+    - `self.items.iter().map()`
 
 ### enum MessageDestination
 
@@ -418,6 +420,14 @@ Notes:
   - Must write a Markdown blockquote
     - Must prefix each line with `>`
     - Must escape each line
+
+### fn iter_write_as_markdown
+
+- Must have inputs:
+  - `writer: &mut impl Write`
+  - `iter: impl IntoIterator<Item = &'a str>`
+- Must have body:
+  - Must write the items from iter separated with a horizontal line ("-----")
 
 ### struct MarkdownLocator
 
