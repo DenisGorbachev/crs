@@ -428,6 +428,8 @@ Notes:
   - `iter: impl IntoIterator<Item = &'a str>`
 - Must have body:
   - Must write the items from iter separated with a horizontal line ("-----")
+- Must be written as a loop.
+  - Rationale: it's clearer.
 
 ### struct MarkdownLocator
 
