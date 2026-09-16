@@ -1,14 +1,17 @@
 function crs-codex-thread-output-path() {
-  local output_dir="$PWD/crs.local/$CRS_CODEX_THREAD_ID"
+  crs-require-sandbox || return
+  local file_stem=${1:?"file stem is required"}
+  local output_dir="$PWD/crs.local/threads/$CRS_CODEX_THREAD_ID"
   if ! mkdir -p "$output_dir"; then
     error "Failed to create output directory: $output_dir"
     return 1
   fi
 
-  echo "$output_dir/$1.md"
+  echo "$output_dir/$file_stem.md"
 }
 
 function crs-codex-thread-create() {
+  crs-require-sandbox || return
   if [[ -n ${CRS_CODEX_THREAD_ID+x} ]]; then
     error "CRS_CODEX_THREAD_ID is already set"
     return 1
@@ -27,13 +30,13 @@ function crs-codex-thread-create() {
 
   while IFS=: read -r label value; do
     case "$label" in
-      "session id") export CRS_CODEX_THREAD_ID="${value#"${value%%[![:space:]]*}"}" ;;
-      "crs-codex-thread-create status") codex_status=$value ;;
+    "session id") export CRS_CODEX_THREAD_ID="${value#"${value%%[![:space:]]*}"}" ;;
+    "crs-codex-thread-create status") codex_status=$value ;;
     esac
   done < <(
     set -euo pipefail
     trap 'codex_status=$?; echo; echo "crs-codex-thread-create status:$codex_status"' EXIT
-    { crs-codex exec "$@" > "$output_temp"; } 2>&1 | tee /dev/stderr
+    { crs-codex exec "$@" >"$output_temp"; } 2>&1 | tee /dev/stderr
   )
 
   if [[ -z ${CRS_CODEX_THREAD_ID-} ]]; then
@@ -51,6 +54,7 @@ function crs-codex-thread-create() {
 }
 
 function crs-codex-thread-resume() {
+  crs-require-sandbox || return
   if [[ -z ${CRS_CODEX_THREAD_ID-} ]]; then
     error "CRS_CODEX_THREAD_ID is not set"
     return 1
@@ -63,5 +67,5 @@ function crs-codex-thread-resume() {
     error "Output file already exists: $output_path"
     return 1
   fi
-  crs-codex exec resume "$CRS_CODEX_THREAD_ID" "$@" > "$output_path"
+  crs-codex exec resume "$CRS_CODEX_THREAD_ID" "$@" >"$output_path"
 }

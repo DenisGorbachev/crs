@@ -11,7 +11,7 @@ use thiserror::Error;
 #[derive(Parser, Clone, Debug)]
 #[command(flatten_help = true)]
 pub struct CodexCommand {
-    #[arg(long, env = "CRS_CODEX_APP_SERVER", value_parser = resolve_remote_addr, value_name = "URL")]
+    #[arg(long, env = "CRS_CODEX_APP_SERVER", default_value = "unix://", value_parser = resolve_remote_addr, value_name = "URL")]
     pub app_server: RemoteAppServerEndpoint,
     #[command(subcommand)]
     pub subcommand: CodexSubcommand,
