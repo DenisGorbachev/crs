@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 function crs-codex-thread-output-path() {
   crs-require-sandbox || return
   local file_stem=${1:?"file stem is required"}
