@@ -1,68 +1,21 @@
 #!/usr/bin/env bash
 
 function crs-env() {
-  local crs_env_file crs_env_record crs_env_name crs_env_attributes
-  local crs_env_status=0 crs_env_valid=1
-  local -a crs_env_records=()
+  local crs_env_file crs_env_record crs_env_status=0
   local -x CRS_ENV_FD=4 || return
   crs_env_file=$(mktemp "${TMPDIR:-/tmp}/crs-env.XXXXXX") || return
 
-  if {
-    if {
+  if ! {
+    {
       rm -f "$crs_env_file" && { "$@" || crs_env_status=$?; }
-    } 4>>"$crs_env_file"; then
+    } 4>>"$crs_env_file" &&
       while IFS= read -r -d '' crs_env_record <&3; do
-        crs_env_name=${crs_env_record%%=*}
-        case "$crs_env_record" in
-        *=*) ;;
-        *)
-          error "Environment output contains a record without '='" || :
-          crs_env_valid=0
+        if ! export "${crs_env_record%%=*}=${crs_env_record#*=}"; then
+          [[ $crs_env_status != 0 ]] || crs_env_status=1
           break
-          ;;
-        esac
-        case "$crs_env_name" in
-        ''|[0-9]*|*[!a-zA-Z0-9_]*|CRS_ENV_FD|crs_env_*)
-          error "Environment output contains an invalid or reserved name" || :
-          crs_env_valid=0
-          break
-          ;;
-        esac
-        if [[ -n ${ZSH_VERSION-} ]]; then
-          crs_env_attributes=${parameters[$crs_env_name]-}
-          crs_env_attributes=${crs_env_attributes//-local/}
-          crs_env_attributes=${crs_env_attributes//-export/}
-          crs_env_attributes=${crs_env_attributes//-tied/}
-          crs_env_attributes=${crs_env_attributes//-special/}
-        elif crs_env_attributes=$(declare -p "$crs_env_name" 2>/dev/null); then
-          crs_env_attributes=${crs_env_attributes#declare -}
-          crs_env_attributes=${crs_env_attributes%% *}
         fi
-        case "$crs_env_attributes" in
-        ''|-|x|scalar) ;;
-        *)
-          error "Cannot export a literal scalar to '$crs_env_name': $crs_env_attributes" || :
-          crs_env_valid=0
-          break
-          ;;
-        esac
-        crs_env_records+=("$crs_env_record")
       done
-      if [[ $crs_env_valid == 1 && -n $crs_env_record ]]; then
-        error "Environment output contains an unterminated record" || :
-        crs_env_valid=0
-      fi
-      [[ $crs_env_valid == 1 ]]
-    fi
   } 3<"$crs_env_file"; then
-    for crs_env_record in "${crs_env_records[@]}"; do
-      if ! export "${crs_env_record%%=*}=${crs_env_record#*=}"; then
-        error "Failed to export '${crs_env_record%%=*}'" || :
-        [[ $crs_env_status != 0 ]] || crs_env_status=1
-        break
-      fi
-    done
-  else
     [[ $crs_env_status != 0 ]] || crs_env_status=1
     rm -f "$crs_env_file" || error "Failed to remove environment output file: $crs_env_file" || :
   fi
@@ -162,19 +115,25 @@ function crs-drafts-new-edit() {
   if [[ ! -t 0 ]]; then
     cat >>"$draft_path" || return
   fi
-  crs-edit "$draft_path" </dev/tty >&2 || return
+  crs-edit "$draft_path" </dev/tty >/dev/tty 2>&1 || return
   echo "$draft_path"
 }
 
-function crs-codex-thread-resume-edit() (
-  set -o pipefail
+function crs-codex-thread-resume-edit() {
   crs-require-sandbox || return
   if [[ -z ${CRS_CODEX_THREAD_ID-} ]]; then
     error "CRS_CODEX_THREAD_ID is not set"
     return 1
   fi
 
-  local draft_path
-  draft_path=$(crs codex thread get render-agent-message | crs-drafts-new-edit) || return
+  local draft_path render_status
+  draft_path=$(crs-drafts-new) || return
+  info "Loading the latest agent message for thread '$CRS_CODEX_THREAD_ID'" || return
+  crs codex thread get render-agent-message >>"$draft_path" || {
+    render_status=$?
+    error "Failed to load the agent message into draft '$draft_path'" || :
+    return "$render_status"
+  }
+  crs-edit "$draft_path" </dev/tty >/dev/tty 2>&1 || return
   crs-codex-thread-resume "$@" - <"$draft_path"
-)
+}

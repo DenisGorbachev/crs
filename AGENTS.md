@@ -724,7 +724,6 @@ use globset::Glob;
 use pulldown_cmark::{OffsetIter, Options};
 use save_load::Format;
 use nu_path::{RelativePath, RelativePathBuf};
-use std::fs::File;
 use std::os::fd::RawFd;
 ```
 
@@ -759,10 +758,6 @@ use std::os::fd::RawFd;
 
 - Must refine `RawFd` to values greater than 2
 - Must implement `FromStr`
-
-##### impl TryFrom<EnvFd> for File
-
-- Must duplicate the descriptor into an owned `File`, rejecting closed or non-writable descriptors
 
 ##### Environment output
 
@@ -1202,8 +1197,8 @@ Notes:
 ###### function crs-env
 
 - Must run `"$@"` with `CRS_ENV_FD` pointing to an unlinked temporary file opened separately for reading and appending
-- Must validate all records before exporting literal scalar values, splitting at the first `=` and letting later assignments win
-- Must apply valid output even on command failure, preserving its status
+- Must export each record literally, splitting at the first `=`
+- Must apply output even on command failure, preserving its status
 - Wrapper failures must return nonzero when the command succeeded
 - Descriptor and `CRS_ENV_FD` changes must be scoped to each invocation
 
@@ -1242,7 +1237,7 @@ Notes:
 
 ###### function crs-codex-thread-resume-edit
 
-- Must redirect the latest agent message from `crs codex thread get render-agent-message` to `crs-drafts-new-edit`
+- Must load the latest agent message into a new draft before opening the editor in the foreground with terminal stdin, stdout and stderr
 - Must send the contents of the draft to `crs-codex-thread-resume`
 
 ###### function crs-git-approval-next
