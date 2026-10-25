@@ -703,14 +703,6 @@ CRS is a code review system.
 
 #### Decisions
 
-- How to compose a message?
-  - Options
-    - Use `codex exec`, open the artifacts via commands
-    - Use "External editor", open the artifacts in popups
-      - How to implement popups?
-        - Options
-          - Via editor plugin
-          - Via mux pane
 - How to deal with file-level changes that are not tied to a specific code item?
   - Examples:
     - Adding `#![no_std]`
@@ -724,7 +716,6 @@ use globset::Glob;
 use pulldown_cmark::{OffsetIter, Options};
 use save_load::Format;
 use nu_path::{RelativePath, RelativePathBuf};
-use std::os::fd::RawFd;
 ```
 
 #### crs package
@@ -747,23 +738,21 @@ use std::os::fd::RawFd;
   - `session_id: SessionId`
     - `#[clap(env = "CRS_SESSION_ID")]`
   - `editor: Option<OsString>`
+  - `subcommand: Subcommand`
+    - `#[command(subcommand)]`
 - Must have methods:
   - `run`
     - `let config = Format::load_one_as(&config)`
     - `let db = Db::open(db_config)`
     - `let now = Timestamp::now()`
     - `let editor = editor_var_os(editor)`
-
-##### struct EnvFd
-
-- Must refine `RawFd` to values greater than 2
-- Must implement `FromStr`
+- Must expose `draft new` through `DraftCommand`
 
 ##### Environment output
 
-- Commands that export variables must require `env_fd: EnvFd` with `#[arg(long, env = "CRS_ENV_FD")]`
-- Must write NUL-terminated `NAME=VALUE` records before returning, after the corresponding state exists
-- Names must match `[A-Za-z_][A-Za-z0-9_]*`, excluding `CRS_ENV_FD` and the `crs_env_` prefix
+- Commands that export variables must require `env_file: PathBuf` with `#[arg(long, env = "CRS_ENV_FILE")]`
+- Must append NUL-terminated `NAME=VALUE` records to the existing file with `OpenOptions::append`, after the corresponding state exists
+- Names must match `[A-Za-z_][A-Za-z0-9_]*`, excluding `CRS_ENV_FILE` and the `crs_env_` prefix
 - Values may contain any bytes except NUL
 
 ##### struct ShowCommand
@@ -793,6 +782,10 @@ use std::os::fd::RawFd;
 ##### struct PrintVerdictCommand
 
 ##### struct GitCommand
+
+##### struct NextApprovalGitCommand
+
+- Must show one unapproved review item in a pager that exits at the end of the item
 
 ##### struct RepoGitCommand
 
@@ -839,6 +832,84 @@ Notes:
 - Codex subcommands must use the app-server JSON-RPC API with request and response types from `codex-app-server-protocol`
 - Request-response operations must use `client.request_typed::<Response>(request).await`; `next_event()` is only needed by subcommands that consume notifications or server-initiated requests
 - Directory filters describe paths on the app-server host
+- Drafts and output artifacts belong to the CRS client filesystem
+
+##### Codex message input
+
+- Applies to `CreateThreadCodexCommand`, `SendGetThreadCodexCommand`, `SteerGetThreadCodexCommand`, and `QueueGetThreadCodexCommand`
+- Must have fields:
+  - `prompt: Option<String>`
+    - Positional text, or `-` to read stdin
+  - `edit: bool`
+    - `#[arg(long)]`
+  - `draft_dir: Option<PathBuf>`
+    - `#[arg(long)]`
+- Without `edit`, must require `prompt`
+- With `edit`, must create a persistent draft with the naming and editor behavior of `NewDraftCommand`
+  - Must initialize it with `prompt` when provided
+  - Otherwise, must use the latest agent message for an existing thread, or an empty draft for a new thread
+- Must return success without creating or resuming a thread or submitting input when the resulting text is empty after trimming whitespace
+- Must preserve whitespace in nonempty input
+- Must generate one UUID `client_user_message_id` per submission
+- Must not automatically resubmit after an ambiguous transport failure
+
+##### Codex foreground submissions
+
+- Applies to `CreateThreadCodexCommand`, `SendGetThreadCodexCommand`, and `SteerGetThreadCodexCommand`
+- Must accept `output_dir: Option<PathBuf>` with `#[arg(long)]`, defaulting to `<git-root>/crs.local/threads`
+- Before submitting input, must exclusively create `<output_dir>/<thread_id>/<UTC timestamp>.md`
+- Must consume `next_event()` until `turn/completed` for the thread and turn returned by the submission response
+  - Must retain notifications received before that response
+  - Must stream progress to stderr
+  - Must write completed final agent messages for that turn to the output file exactly once per item
+  - Must handle approval and user-input requests through the terminal
+- Must print the output path to stdout
+- Must preserve output on failure and include its path in the error
+- Must return nonzero for a failed or interrupted turn
+- Ctrl+C must disconnect the client without interrupting the server's turn
+
+##### struct CreateThreadCodexCommand
+
+- Must have fields:
+  - `env_file: PathBuf`
+    - `#[arg(long, env = "CRS_ENV_FILE")]`
+  - `cwd: Option<PathBuf>`
+    - `#[arg(long)]`
+- Must error if `CRS_CODEX_THREAD_ID` is set
+- Must call `thread/start` with `ThreadStartParams` and decode `ThreadStartResponse`
+  - Must pass `cwd` as a path on the app-server host when provided
+- Must export the returned thread ID as `CRS_CODEX_THREAD_ID` through the environment output file before submitting the first turn
+- Must submit the input through `turn/start` with `TurnStartParams` and decode `TurnStartResponse`
+
+##### Existing-thread submissions
+
+- `SendGetThreadCodexCommand` and `SteerGetThreadCodexCommand` must first call `thread/resume` with `ThreadResumeParams` and decode `ThreadResumeResponse`
+  - Must set `exclude_turns = true`
+  - Must omit configuration overrides
+- Must finish reading or editing input before resuming the thread
+
+##### struct SendGetThreadCodexCommand
+
+- Must call `turn/start` with `TurnStartParams` and decode `TurnStartResponse`
+- Must let the server start an idle thread's turn or steer its active turn
+
+##### struct SteerGetThreadCodexCommand
+
+- Must have `expected_turn_id: Option<String>` with `#[arg(long)]`
+- When omitted, must select the latest turn through `thread/turns/list` with `limit: Some(1)`, descending order, and summary items
+  - Must error unless that turn is in progress
+- Must call `turn/steer` with `TurnSteerParams`, including `expected_turn_id`, and decode `TurnSteerResponse`
+- Must propagate a missing, changed, or non-steerable active turn as an error
+
+##### struct QueueGetThreadCodexCommand
+
+- Must call `thread/queue/add` with `ThreadQueueAddParams` and decode `ThreadQueueAddResponse`
+- Must write the returned `QueuedSubmission` to stdout via `write_jsonl` and return after acknowledgement
+- Must leave delivery to the server's durable queue
+  - Loaded eligible idle threads may start immediately
+  - Busy threads retain the input for a later turn
+  - Unloaded or interrupted threads may retain it until further user action
+- Must propagate an unavailable queue as an error
 
 ##### struct ThreadCodexCommand
 
@@ -848,6 +919,7 @@ Notes:
 - Must have methods:
   - `run`
     - Must pass the mutable app-server client to the selected subcommand
+- Subcommands: `create`, `get`, `filter`
 
 ##### struct GetThreadCodexCommand
 
@@ -859,6 +931,7 @@ Notes:
 - Must have methods:
   - `run`
     - Must pass the mutable app-server client and `thread_id` to the selected subcommand
+- Subcommands: `send`, `steer`, `queue`, `render-agent-message`, `view-agent-message`
 
 ##### struct RenderAgentMessageGetThreadCodexCommand
 
@@ -877,6 +950,15 @@ Notes:
       - Otherwise, must follow `next_cursor` lazily until the requested agent message is found or history is exhausted
       - Must return an error when history contains too few agent messages
     - Must write the text of the agent message to `stdout`
+
+##### struct ViewAgentMessageGetThreadCodexCommand
+
+- Must have fields:
+  - `index: usize`
+    - `#[arg(long, default_value_t)]`
+  - `pager: OsString`
+    - `#[arg(long, default_value = "glow")]`
+- Must select the message using the `RenderAgentMessageGetThreadCodexCommand` rules and pass its text to the pager's stdin
 
 ##### struct FilterThreadCodexCommand
 
@@ -1182,70 +1264,35 @@ Notes:
 
 ##### impl TryFrom<(PathBufPrefix, PathBuf)> for PrefixedPathBuf
 
+##### struct DraftCommand
+
+- Must dispatch its `new` subcommand to `NewDraftCommand`
+
+##### struct NewDraftCommand
+
+- Must have fields:
+  - `dir: Option<PathBuf>`
+    - `#[arg(long)]`, defaulting to `<git-root>/.crs.local/drafts`
+  - `edit: bool`
+    - `#[arg(long)]`
+- Must create a persistent, unique Markdown file whose name starts with a UTC timestamp
+- Must copy piped stdin into the draft, or create an empty draft when stdin is a terminal
+- With `edit`, must run the editor selected by `Command` in the foreground with terminal stdin, stdout, and stderr
+- Must print the draft path to stderr before editing and to stdout on success
+- Must retain the draft on editor failure and include its path in the error
+
 ##### file src/shell/helpers.sh
 
-- Must target Bash and Zsh
-- Must assume the existence of callables:
-  - `crs-codex`
-  - `crs-timestamp`
-  - `crs-edit`
-  - `info`
-  - `warn`
-  - `error`
-- Shared helpers must be defined in the dotfiles repository and must not be redefined here
+- Must contain only the Bash/Zsh `crs-env` wrapper
 
 ###### function crs-env
 
-- Must run `"$@"` with `CRS_ENV_FD` pointing to an unlinked temporary file opened separately for reading and appending
+- Must run `"$@"` with `CRS_ENV_FILE` pointing to a private temporary file unique to the invocation
 - Must export each record literally, splitting at the first `=`
 - Must apply output even on command failure, preserving its status
+- Must remove the temporary file before returning
 - Wrapper failures must return nonzero when the command succeeded
-- Descriptor and `CRS_ENV_FD` changes must be scoped to each invocation
-
-###### requirements for crs-codex exec invoker
-
-- Every `crs-codex exec` invocation:
-  - Must not add `--json`
-  - Must redirect stdout to `$PWD/crs.local/$CRS_CODEX_THREAD_ID/$timestamp.md`
-    - `timestamp` must be obtained by calling `crs-timestamp`
-    - Must not overwrite an existing output file
-  - Must stream stderr to shell
-    - Rationale: the user wants to see the progress
-
-###### function crs-codex-thread-create
-
-- Must satisfy [requirements for crs-codex exec invoker](#requirements-for-crs-codex-exec-invoker)
-- Must error if `CRS_CODEX_THREAD_ID` is set
-- Must call `crs-codex exec` with "$@"
-- Must parse the session id out of `crs-codex exec` output
-- Must export `CRS_CODEX_THREAD_ID`
-
-###### function crs-codex-thread-resume
-
-- Must satisfy [requirements for crs-codex exec invoker](#requirements-for-crs-codex-exec-invoker)
-- Must error if `CRS_CODEX_THREAD_ID` is not set
-- Must error before calling `crs-codex exec` if the output file exists
-- Must call `crs-codex exec resume` with `CRS_CODEX_THREAD_ID` and "$@"
-
-###### function crs-codex-thread-render-message
-
-- Must call `crs codex thread get render-agent-message "$@" | glow`
-
-###### function crs-drafts-new-edit
-
-- Must create a file with `stdin` input (or empty file if there's no `stdin` input)
-
-###### function crs-codex-thread-resume-edit
-
-- Must load the latest agent message into a new draft before opening the editor in the foreground with terminal stdin, stdout and stderr
-- Must skip resuming when the edited draft is empty after trimming whitespace
-- Must send the contents of the draft to `crs-codex-thread-resume`
-
-###### function crs-git-approval-next
-
-- TODO:
-  - Must show a single item
-  - Must exit the pager when the end of the item is reached
+- Must scope `CRS_ENV_FILE` to the invocation
 
 ### Error handling
 

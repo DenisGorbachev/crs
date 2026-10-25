@@ -1,23 +1,22 @@
 #!/usr/bin/env bash
 
 function crs-env() {
-  local crs_env_file crs_env_record crs_env_status=0
-  local -x CRS_ENV_FD=4 || return
-  crs_env_file=$(mktemp "${TMPDIR:-/tmp}/crs-env.XXXXXX") || return
+  local crs_env_record crs_env_status=0
+  local -x CRS_ENV_FILE || return
+  CRS_ENV_FILE=$(mktemp "${TMPDIR:-/tmp}/crs-env.XXXXXX") || return
 
-  if ! {
-    {
-      rm -f "$crs_env_file" && { "$@" || crs_env_status=$?; }
-    } 4>>"$crs_env_file" &&
-      while IFS= read -r -d '' crs_env_record <&3; do
-        if ! export "${crs_env_record%%=*}=${crs_env_record#*=}"; then
-          [[ $crs_env_status != 0 ]] || crs_env_status=1
-          break
-        fi
-      done
-  } 3<"$crs_env_file"; then
+  "$@" || crs_env_status=$?
+  if ! while IFS= read -r -d '' crs_env_record; do
+    if ! export "${crs_env_record%%=*}=${crs_env_record#*=}"; then
+      [[ $crs_env_status != 0 ]] || crs_env_status=1
+      break
+    fi
+  done <"$CRS_ENV_FILE"; then
     [[ $crs_env_status != 0 ]] || crs_env_status=1
-    rm -f "$crs_env_file" || error "Failed to remove environment output file: $crs_env_file" || :
+  fi
+  if ! rm -f "$CRS_ENV_FILE"; then
+    error "Failed to remove environment output file: $CRS_ENV_FILE" || :
+    [[ $crs_env_status != 0 ]] || crs_env_status=1
   fi
   return "$crs_env_status"
 }
