@@ -81,21 +81,15 @@ function crs-drafts-new() {
   repo_root=$(git rev-parse --show-toplevel) || return
   timestamp=$(crs-timestamp) || return
   drafts_dir="$repo_root/.crs.local/drafts"
-  draft_path="$drafts_dir/$timestamp.md"
-  # TODO: create a temp file prefixed with $timestamp and suffixed with md, so that the file is guaranteed to be unique
   mkdir -p "$drafts_dir" || return
-  (
-    set -C
-    : >"$draft_path"
-  ) || return
-  # echo to stderr too, so that the user would know the path in case of error
-  echo "$draft_path" >&2
+  draft_path=$(mktemp --suffix=.md "$drafts_dir/$timestamp.XXXXXX") || return
+  info "$draft_path" || return
   echo "$draft_path"
 }
 
-function crs-drafts-new-edit() (
+function crs-drafts-new-edit() {
   local draft_path
   draft_path=$(crs-drafts-new) || return
-  crs-edit "$draft_path"
+  crs-edit "$draft_path" >&2 || return
   echo "$draft_path"
-)
+}
