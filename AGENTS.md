@@ -1238,6 +1238,7 @@ Notes:
 ###### function crs-codex-thread-resume-edit
 
 - Must load the latest agent message into a new draft before opening the editor in the foreground with terminal stdin, stdout and stderr
+- Must skip resuming when the edited draft is empty after trimming whitespace
 - Must send the contents of the draft to `crs-codex-thread-resume`
 
 ###### function crs-git-approval-next

@@ -126,7 +126,7 @@ function crs-codex-thread-resume-edit() {
     return 1
   fi
 
-  local draft_path render_status
+  local draft_path render_status draft_status
   draft_path=$(crs-drafts-new) || return
   info "Loading the latest agent message for thread '$CRS_CODEX_THREAD_ID'" || return
   crs codex thread get render-agent-message >>"$draft_path" || {
@@ -135,5 +135,12 @@ function crs-codex-thread-resume-edit() {
     return "$render_status"
   }
   crs-edit "$draft_path" </dev/tty >/dev/tty 2>&1 || return
-  crs-codex-thread-resume "$@" - <"$draft_path"
+  if rg --quiet '\S' "$draft_path"; then
+    crs-codex-thread-resume "$@" - <"$draft_path"
+  else
+    draft_status=$?
+    [[ $draft_status == 1 ]] && return 0
+    error "Failed to check whether draft '$draft_path' is empty" || :
+    return "$draft_status"
+  fi
 }
