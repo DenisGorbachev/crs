@@ -29,6 +29,7 @@ use globset::Glob;
 use pulldown_cmark::{OffsetIter, Options};
 use save_load::Format;
 use nu_path::{RelativePath, RelativePathBuf};
+use std::os::fd::RawFd;
 ```
 
 ## crs package
@@ -51,12 +52,35 @@ use nu_path::{RelativePath, RelativePathBuf};
   - `session_id: SessionId`
     - `#[clap(env = "CRS_SESSION_ID")]`
   - `editor: Option<OsString>`
+  - `env_fd: Option<RawFd>`
+    - `#[arg(long, env = "CRS_ENV_FD", global = true)]`
 - Must have methods:
   - `run`
+    - Must validate that a supplied `env_fd` is an open writable descriptor greater than 2 before dispatching
+    - Must make one shared environment-output writer available to subcommands
     - `let config = Format::load_one_as(&config)`
     - `let db = Db::open(db_config)`
     - `let now = Timestamp::now()`
     - `let editor = editor_var_os(editor)`
+
+### Environment output protocol
+
+- Must encode assignments as NUL-terminated `NAME=VALUE` records, splitting at the first `=`
+- Names must match `[A-Za-z_][A-Za-z0-9_]*`
+- `CRS_ENV_FD` and the `__crs_env_` prefix are reserved for the shell wrapper
+- Values must preserve arbitrary bytes except NUL, including empty values and trailing newlines
+- Later assignments to the same name take precedence
+- Commands that require caller environment changes must reject a missing channel before performing side effects
+- Commands must publish assignments only after the corresponding state exists
+- Writers must serialize records and propagate encoding, write and flush errors
+- All channel writes must finish before the wrapped command returns
+
+### file ~/workspace/dotfiles/src/.shellrc/crs.sh
+
+#### function crs
+
+- Must call `crs-require-sandbox`
+- Must call `crs-env mise-cargo-run "$crs_project_dir" -- "$@"`
 
 ### struct ShowCommand
 
@@ -485,6 +509,25 @@ Notes:
   - `warn`
   - `error`
 - Shared helpers must be defined in the dotfiles repository and must not be redefined here
+
+#### function crs-env
+
+- Must run as a function in the invoking shell
+- Must create a private temporary regular file with independent read and append descriptors
+- Must unlink the temporary pathname after opening both descriptors
+- Must expose the inherited append descriptor as `CRS_ENV_FD` for `"$@"`
+- Must run `"$@"` with its original stdin, stdout and stderr
+- Must read the environment output after the command exits
+- Must validate the entire payload before applying assignments
+- Must reject malformed or unterminated records and targets that cannot accept a literal scalar export
+- Must export values literally without `eval`, `source` or shell-code interpretation
+- Must apply valid assignments even when the command fails, preserving identifiers for state created before the failure
+- Must preserve a failing command's exit status
+- Must return a nonzero status for channel, validation, export or cleanup failures when the command succeeded
+- Must report wrapper errors on stderr
+- Must close per-call descriptors and remove any remaining temporary pathname on completion or interruption
+- Must restore the previous value and export state of `CRS_ENV_FD`
+- Nested invocations must use independent channels
 
 #### requirements for crs-codex exec invoker
 
