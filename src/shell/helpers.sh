@@ -2,8 +2,10 @@
 
 function crs-codex-thread-output-path() {
   crs-require-sandbox || return
-  local file_stem=${1:?"file stem is required"}
-  local output_dir="$PWD/crs.local/threads/$CRS_CODEX_THREAD_ID"
+  local repo_root file_stem output_dir
+  repo_root=$(git rev-parse --show-toplevel) || return
+  file_stem=${1:?"file stem is required"}
+  output_dir="$repo_root/crs.local/threads/$CRS_CODEX_THREAD_ID"
   if ! mkdir -p "$output_dir"; then
     error "Failed to create output directory: $output_dir"
     return 1
@@ -19,8 +21,10 @@ function crs-codex-thread-create() {
     return 1
   fi
 
-  local timestamp output_root="$PWD/crs.local" output_temp output_path codex_status=1 label value
+  local timestamp repo_root output_root output_temp output_path codex_status=1 label value
+  repo_root=$(git rev-parse --show-toplevel) || return
   timestamp=$(crs-timestamp) || return 1
+  output_root="$repo_root/crs.local"
   if ! mkdir -p "$output_root"; then
     error "Failed to create output directory: $output_root"
     return 1
@@ -71,3 +75,27 @@ function crs-codex-thread-resume() {
   fi
   crs-codex exec resume "$CRS_CODEX_THREAD_ID" "$@" >"$output_path"
 }
+
+function crs-drafts-new() {
+  local repo_root timestamp drafts_dir draft_path
+  repo_root=$(git rev-parse --show-toplevel) || return
+  timestamp=$(crs-timestamp) || return
+  drafts_dir="$repo_root/.crs.local/drafts"
+  draft_path="$drafts_dir/$timestamp.md"
+  # TODO: create a temp file prefixed with $timestamp and suffixed with md, so that the file is guaranteed to be unique
+  mkdir -p "$drafts_dir" || return
+  (
+    set -C
+    : >"$draft_path"
+  ) || return
+  # echo to stderr too, so that the user would know the path in case of error
+  echo "$draft_path" >&2
+  echo "$draft_path"
+}
+
+function crs-drafts-new-edit() (
+  local draft_path
+  draft_path=$(crs-drafts-new) || return
+  crs-edit "$draft_path"
+  echo "$draft_path"
+)

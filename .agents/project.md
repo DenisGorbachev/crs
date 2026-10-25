@@ -480,6 +480,7 @@ Notes:
 - Must assume the existence of callables:
   - `crs-codex`
   - `crs-timestamp`
+  - `crs-edit`
   - `info`
   - `warn`
   - `error`
@@ -513,6 +514,15 @@ Notes:
 #### function crs-codex-thread-render-message
 
 - Must call `crs codex thread get render-agent-message "$@" | glow`
+
+#### function crs-drafts-new-edit
+
+- Must create a file with `stdin` input (or empty file if there's no `stdin` input)
+
+#### function crs-codex-thread-resume-edit
+
+- Must redirect the latest agent message from `crs codex thread get render-agent-message` to `crs-drafts-new-edit`
+- Must send the contents of the draft to `crs-codex-thread-resume`
 
 #### function crs-git-approval-next
 
