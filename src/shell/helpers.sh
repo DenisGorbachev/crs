@@ -90,6 +90,22 @@ function crs-drafts-new() {
 function crs-drafts-new-edit() {
   local draft_path
   draft_path=$(crs-drafts-new) || return
-  crs-edit "$draft_path" >&2 || return
+  if [[ ! -t 0 ]]; then
+    cat >>"$draft_path" || return
+  fi
+  crs-edit "$draft_path" </dev/tty >&2 || return
   echo "$draft_path"
 }
+
+function crs-codex-thread-resume-edit() (
+  set -o pipefail
+  crs-require-sandbox || return
+  if [[ -z ${CRS_CODEX_THREAD_ID-} ]]; then
+    error "CRS_CODEX_THREAD_ID is not set"
+    return 1
+  fi
+
+  local draft_path
+  draft_path=$(crs codex thread get render-agent-message | crs-drafts-new-edit) || return
+  crs-codex-thread-resume "$@" - <"$draft_path"
+)
