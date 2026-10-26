@@ -134,8 +134,9 @@ use nu_path::{RelativePath, RelativePathBuf};
 
 Notes:
 
-- Codex subcommands must use the app-server JSON-RPC API with request and response types from `codex-app-server-protocol`
-- Request-response operations must use `client.request_typed::<Response>(request).await`; `next_event()` is only needed by subcommands that consume notifications or server-initiated requests
+- Each app-server request initiated by a Codex subcommand must use the corresponding `ClientRequest` variant from `codex-app-server-protocol`
+- Must call `client.request_typed::<Response>(request).await` on the client passed to `run`, where `Response` is the response type declared for that `ClientRequest` variant
+- Subcommands that consume notifications or server-initiated requests must use `client.next_event()`
 - Directory filters describe paths on the app-server host
 - Drafts and output artifacts belong to the CRS client filesystem
 
@@ -144,14 +145,16 @@ Notes:
 - Applies to `CreateThreadCodexCommand`, `SendGetThreadCodexCommand`, `SteerGetThreadCodexCommand`, and `QueueGetThreadCodexCommand`
 - Must have fields:
   - `prompt: Option<String>`
-    - Positional text, or `-` to read stdin
+    - Optional positional argument
   - `edit: bool`
     - `#[arg(long)]`
   - `draft_dir: Option<PathBuf>`
     - `#[arg(long)]`
-- Without `edit`, must require `prompt`
+- When `prompt` is `Some("-")`, must read UTF-8 text from stdin until EOF
+- When `prompt` is `Some(text)` other than `"-"`, must use `text` verbatim
+- When `prompt` is `None`, must require `edit`
 - With `edit`, must create a persistent draft with the naming and editor behavior of `NewDraftCommand`
-  - Must initialize it with `prompt` when provided
+  - Must initialize it with the resolved prompt text when provided
   - Otherwise, must use the latest agent message for an existing thread, or an empty draft for a new thread
 - Must return success without creating or resuming a thread or submitting input when the resulting text is empty after trimming whitespace
 - Must preserve whitespace in nonempty input
