@@ -55,7 +55,7 @@ use nu_path::{RelativePath, RelativePathBuf};
 
 ### Environment output
 
-- Commands that export variables must require `env_file: PathBuf` with `#[arg(long, env = "CRS_ENV_FILE")]`
+- Must require `env_file: PathBuf` with `#[arg(long, env = "CRS_ENV_FILE")]`
 - Must append NUL-terminated `NAME=VALUE` records to the existing file with `OpenOptions::append`, after the corresponding state exists
 - Names must match `[A-Za-z_][A-Za-z0-9_]*`, excluding `CRS_ENV_FILE` and the `crs_env_` prefix
 - Values may contain any bytes except NUL
@@ -118,6 +118,7 @@ use nu_path::{RelativePath, RelativePathBuf};
 
 ### struct CodexCommand
 
+- Must satisfy [Codex API](#codex-api)
 - Must have fields:
   - `app_server: RemoteAppServerEndpoint`
     - `#[clap(long, env = "CRS_CODEX_APP_SERVER", value_parser = codex_tui::resolve_remote_addr)]`
@@ -130,19 +131,16 @@ use nu_path::{RelativePath, RelativePathBuf};
       - Must use `RemoteAppServerConnectArgs` with `experimental_api = true`
     - Must pass `&mut RemoteAppServerClient` to the selected subcommand
     - Must shut down the client connection after the subcommand completes, including on failure
-    - Must not spawn an app-server or fall back to local storage when connection or protocol operations fail
 
-Notes:
+### Codex API
 
-- Each app-server request initiated by a Codex subcommand must use the corresponding `ClientRequest` variant from `codex-app-server-protocol`
-- Must call `client.request_typed::<Response>(request).await` on the client passed to `run`, where `Response` is the response type declared for that `ClientRequest` variant
-- Subcommands that consume notifications or server-initiated requests must use `client.next_event()`
-- Directory filters describe paths on the app-server host
-- Drafts and output artifacts belong to the CRS client filesystem
+- Each app-server request must use the corresponding `ClientRequest` variant from `codex-app-server-protocol`
+- Must call `client.request_typed::<Response>(request).await` on the client created by `CodexCommand::run`, where `Response` is the response type declared for that `ClientRequest` variant
+- Must use `client.next_event()` when consuming notifications or server-initiated requests
+- Must not spawn an app-server or fall back to local storage when connection or protocol operations fail
 
 ### Codex message input
 
-- Applies to `CreateThreadCodexCommand`, `SendGetThreadCodexCommand`, `SteerGetThreadCodexCommand`, and `QueueGetThreadCodexCommand`
 - Must have fields:
   - `prompt: Option<String>`
     - Optional positional argument
@@ -153,9 +151,11 @@ Notes:
 - When `prompt` is `Some("-")`, must read UTF-8 text from stdin until EOF
 - When `prompt` is `Some(text)` other than `"-"`, must use `text` verbatim
 - When `prompt` is `None`, must require `edit`
-- With `edit`, must create a persistent draft with the naming and editor behavior of `NewDraftCommand`
+- With `edit`, must create a draft satisfying [Draft files](#draft-files)
   - Must initialize it with the resolved prompt text when provided
-  - Otherwise, must use the latest agent message for an existing thread, or an empty draft for a new thread
+  - For an existing thread without a prompt, must use [Codex agent message selection](#codex-agent-message-selection) with `index = 0`
+  - For a new thread without a prompt, must create an empty draft
+- With `edit`, must satisfy [Draft editing](#draft-editing)
 - Must return success without creating or resuming a thread or submitting input when the resulting text is empty after trimming whitespace
 - Must preserve whitespace in nonempty input
 - Must generate one UUID `client_user_message_id` per submission
@@ -163,8 +163,8 @@ Notes:
 
 ### Codex foreground submissions
 
-- Applies to `CreateThreadCodexCommand`, `SendGetThreadCodexCommand`, and `SteerGetThreadCodexCommand`
 - Must accept `output_dir: Option<PathBuf>` with `#[arg(long)]`, defaulting to `<git-root>/crs.local/threads`
+- Must resolve `output_dir` on the CRS client filesystem
 - Before submitting input, must exclusively create `<output_dir>/<thread_id>/<UTC timestamp>.md`
 - Must consume `next_event()` until `turn/completed` for the thread and turn returned by the submission response
   - Must retain notifications received before that response
@@ -178,11 +178,11 @@ Notes:
 
 ### struct CreateThreadCodexCommand
 
-- Must have fields:
-  - `env_file: PathBuf`
-    - `#[arg(long, env = "CRS_ENV_FILE")]`
-  - `cwd: Option<PathBuf>`
-    - `#[arg(long)]`
+- Must satisfy [Codex API](#codex-api)
+- Must satisfy [Environment output](#environment-output)
+- Must satisfy [Codex message input](#codex-message-input)
+- Must satisfy [Codex foreground submissions](#codex-foreground-submissions)
+- Must have `cwd: Option<PathBuf>` with `#[arg(long)]`
 - Must error if `CRS_CODEX_THREAD_ID` is set
 - Must call `thread/start` with `ThreadStartParams` and decode `ThreadStartResponse`
   - Must pass `cwd` as a path on the app-server host when provided
@@ -191,18 +191,26 @@ Notes:
 
 ### Existing-thread submissions
 
-- `SendGetThreadCodexCommand` and `SteerGetThreadCodexCommand` must first call `thread/resume` with `ThreadResumeParams` and decode `ThreadResumeResponse`
+- Before submitting input, must call `thread/resume` with `ThreadResumeParams` and decode `ThreadResumeResponse`
   - Must set `exclude_turns = true`
   - Must omit configuration overrides
 - Must finish reading or editing input before resuming the thread
 
 ### struct SendGetThreadCodexCommand
 
+- Must satisfy [Codex API](#codex-api)
+- Must satisfy [Codex message input](#codex-message-input)
+- Must satisfy [Codex foreground submissions](#codex-foreground-submissions)
+- Must satisfy [Existing-thread submissions](#existing-thread-submissions)
 - Must call `turn/start` with `TurnStartParams` and decode `TurnStartResponse`
 - Must let the server start an idle thread's turn or steer its active turn
 
 ### struct SteerGetThreadCodexCommand
 
+- Must satisfy [Codex API](#codex-api)
+- Must satisfy [Codex message input](#codex-message-input)
+- Must satisfy [Codex foreground submissions](#codex-foreground-submissions)
+- Must satisfy [Existing-thread submissions](#existing-thread-submissions)
 - Must have `expected_turn_id: Option<String>` with `#[arg(long)]`
 - When omitted, must select the latest turn through `thread/turns/list` with `limit: Some(1)`, descending order, and summary items
   - Must error unless that turn is in progress
@@ -211,6 +219,8 @@ Notes:
 
 ### struct QueueGetThreadCodexCommand
 
+- Must satisfy [Codex API](#codex-api)
+- Must satisfy [Codex message input](#codex-message-input)
 - Must call `thread/queue/add` with `ThreadQueueAddParams` and decode `ThreadQueueAddResponse`
 - Must write the returned `QueuedSubmission` to stdout via `write_jsonl` and return after acknowledgement
 - Must leave delivery to the server's durable queue
@@ -221,6 +231,7 @@ Notes:
 
 ### struct ThreadCodexCommand
 
+- Must satisfy [Codex API](#codex-api)
 - Must have fields:
   - `subcommand: ThreadCodexSubcommand`
     - `#[clap(subcommand)]`
@@ -231,6 +242,7 @@ Notes:
 
 ### struct GetThreadCodexCommand
 
+- Must satisfy [Codex API](#codex-api)
 - Must have fields:
   - `thread_id: CodexThreadId`
     - `#[clap(env = "CRS_CODEX_THREAD_ID")]`
@@ -241,40 +253,45 @@ Notes:
     - Must pass the mutable app-server client and `thread_id` to the selected subcommand
 - Subcommands: `send`, `steer`, `queue`, `render-agent-message`, `view-agent-message`
 
+### Codex agent message selection
+
+- Must call `thread/items/list` with `ThreadItemsListParams` and decode `ThreadItemsListResponse`
+  - Must set `thread_id`, omit `turn_id`, start without a cursor, and set `sort_direction: Some(Desc)`
+  - Must request `u32::MAX` items and let the server apply its page-size cap
+- Must filter the returned `ThreadItemEntry.item` values by the `AgentMessage` variant
+- Must get the agent message at `index` across pages, newest first
+  - The index counts agent messages across pages, not all items
+  - Must stop after the first page when it contains the requested agent message
+  - Otherwise, must follow `next_cursor` lazily until the requested agent message is found or history is exhausted
+  - Must return an error when history contains too few agent messages
+
 ### struct RenderAgentMessageGetThreadCodexCommand
 
-- Must have fields:
-  - `index: usize`
-    - `#[clap(long, default_value_t)]`
-- Must have methods:
-  - `run`
-    - Must call `thread/items/list` with `ThreadItemsListParams` and decode `ThreadItemsListResponse`
-      - Must set `thread_id`, omit `turn_id`, start without a cursor, and set `sort_direction: Some(Desc)`
-      - Must request `u32::MAX` items and let the server apply its page-size cap
-    - Must filter the returned `ThreadItemEntry.item` values by the `AgentMessage` variant
-    - Must get the agent message at `index` across pages, newest first
-      - The index counts agent messages across pages, not all items
-      - Must stop after the first page when it contains the requested agent message
-      - Otherwise, must follow `next_cursor` lazily until the requested agent message is found or history is exhausted
-      - Must return an error when history contains too few agent messages
-    - Must write the text of the agent message to `stdout`
+- Must satisfy [Codex API](#codex-api)
+- Must satisfy [Codex agent message selection](#codex-agent-message-selection)
+- Must have `index: usize` with `#[arg(long, default_value_t)]`
+- Must write the text of the agent message to `stdout`
 
 ### struct ViewAgentMessageGetThreadCodexCommand
 
+- Must satisfy [Codex API](#codex-api)
+- Must satisfy [Codex agent message selection](#codex-agent-message-selection)
 - Must have fields:
   - `index: usize`
     - `#[arg(long, default_value_t)]`
   - `pager: OsString`
     - `#[arg(long, default_value = "glow")]`
-- Must select the message using the `RenderAgentMessageGetThreadCodexCommand` rules and pass its text to the pager's stdin
+- Must pass the selected message's text to the pager's stdin
 
 ### struct FilterThreadCodexCommand
 
+- Must satisfy [Codex API](#codex-api)
 - Must have fields:
   - `search_term: Option<String>`
     - `#[clap(long)]`
   - `cwd_filters: Vec<String>`
     - `#[clap(long, num_args = 1..)]`
+    - Paths refer to the app-server host
   - `offset: usize`
     - `#[clap(long, default_value_t)]`
   - `limit: usize`
@@ -576,18 +593,29 @@ Notes:
 
 - Must dispatch its `new` subcommand to `NewDraftCommand`
 
+### Draft files
+
+- Must resolve the draft directory on the CRS client filesystem
+- Must default the draft directory to `<git-root>/.crs.local/drafts`
+- Must create a persistent, unique Markdown file whose name starts with a UTC timestamp
+
+### Draft editing
+
+- Must run the editor selected by `Command` in the foreground with terminal stdin, stdout, and stderr
+- Must print the draft path to stderr before editing
+- Must retain the draft on editor failure and include its path in the error
+
 ### struct NewDraftCommand
 
+- Must satisfy [Draft files](#draft-files)
 - Must have fields:
   - `dir: Option<PathBuf>`
-    - `#[arg(long)]`, defaulting to `<git-root>/.crs.local/drafts`
+    - `#[arg(long)]`
   - `edit: bool`
     - `#[arg(long)]`
-- Must create a persistent, unique Markdown file whose name starts with a UTC timestamp
 - Must copy piped stdin into the draft, or create an empty draft when stdin is a terminal
-- With `edit`, must run the editor selected by `Command` in the foreground with terminal stdin, stdout, and stderr
-- Must print the draft path to stderr before editing and to stdout on success
-- Must retain the draft on editor failure and include its path in the error
+- With `edit`, must satisfy [Draft editing](#draft-editing)
+- Must print the draft path to stdout on success
 
 ### file src/shell/helpers.sh
 
