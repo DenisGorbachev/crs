@@ -2785,7 +2785,7 @@ deno = "1.46.1"
 fnox = "1.33.1"
 fd = "10.4.2"
 "github:ewhauser/shuck" = "0.2.2"
-"aqua:rvben/rumdl" = "0.1.0"
+"aqua:rvben/rumdl" = "0.3.0"
 "npm:@commitlint/config-conventional" = "19.6.0"
 "npm:@commitlint/cli" = "19.6.0"
 "npm:@commitlint/types" = "19.5.0"
@@ -2836,7 +2836,8 @@ run = "cargo clippy --locked --workspace --all-targets --all-features -- -D warn
 run = "cargo fmt --all -- --check"
 
 [tasks."lint:shell"]
-run = '''shuck --config "lint.source-paths = ['$HOME']" check .'''
+# Shuck 0.2.2 scans Git-ignored local files, so exclude them explicitly.
+run = '''shuck --config "lint.source-paths = ['$HOME']" check --extend-exclude '*.local.*' .'''
 
 [tasks."lint:docs"]
 run = "rumdl check"
@@ -2878,7 +2879,7 @@ depends = ["fix:cargo", "fix:fnox"]
 depends = ["fix:name", "fix:code:style", "fix:shell"]
 
 [tasks."fix:shell"]
-run = '''shuck --config "lint.source-paths = ['$HOME']" check --fix .'''
+run = [{ task = "lint:shell", args = ["--fix"] }]
 
 [tasks."fix:code:warnings"]
 depends = ["fix:cargo"]
