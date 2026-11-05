@@ -18,7 +18,6 @@ exclude = [
     "specs",
     "AGENTS.ts",
     "CargoMetadata.ts",
-    "GeneratedFile.ts",
     "README.ts",
     "AGENTS*.md",
     "deno.lock",
