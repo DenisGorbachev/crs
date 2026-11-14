@@ -2265,19 +2265,17 @@ absolute_paths = "deny"
 arithmetic_side_effects = "deny"
 
 [workspace.dependencies]
-clap = { version = "4.5.11", features = ["derive", "env"] }
-derive-getters = { version = "0.5.0", features = ["auto_copy_getters"] }
-derive-new = "0.7.0"
 derive_more = { version = "2.1.1", features = ["full"] }
+derive-new = "0.7.0"
+derive-getters = { version = "0.5.0", features = ["auto_copy_getters"] }
+clap = { version = "4.5.11", features = ["derive", "env"] }
 errgonomic = { git = "https://github.com/DenisGorbachev/errgonomic" }
 standard-traits = { git = "https://github.com/DenisGorbachev/standard-traits" }
 strum = { version = "0.28.0", features = ["derive"] }
-stub-macro = { version = "0.3.1" }
 subtype = { git = "https://github.com/DenisGorbachev/subtype" }
-thiserror = "2.0.19"
+thiserror = "2.0.21"
 tokio = { version = "1.39.2", features = ["macros", "fs", "net", "rt", "rt-multi-thread"] }
 futures = { version = "0.3.34" }
-save-load = { git = "https://github.com/DenisGorbachev/save-load", features = ["clap", "serde_json", "serde_yaml", "toml"] }
 git2 = "0.21.0"
 timestamp-please = { git = "https://github.com/DenisGorbachev/timestamp-please", features = ["serde", "time"] }
 fjall = { version = "3.1.10" }
@@ -2317,12 +2315,10 @@ derive_more.workspace = true
 errgonomic.workspace = true
 standard-traits.workspace = true
 strum.workspace = true
-stub-macro.workspace = true
 subtype.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 futures.workspace = true
-save-load.workspace = true
 git2.workspace = true
 timestamp-please.workspace = true
 fjall.workspace = true
@@ -2363,7 +2359,6 @@ exclude.workspace = true
 
 [dependencies]
 strum.workspace = true
-clap.workspace = true
 
 [lints]
 workspace = true
