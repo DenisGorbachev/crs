@@ -1,7 +1,7 @@
 use crate::{CodexThreadId, PageStreamError, list_items_params_all_reverse, page_stream};
 use clap::Parser;
 use codex_app_server_client::{RemoteAppServerClient, TypedRequestError};
-use codex_app_server_protocol::ThreadItem::*;
+use codex_app_server_protocol::ThreadItemPayload::*;
 use codex_app_server_protocol::{ClientRequest, RequestId, ThreadItemsListParams, ThreadItemsListResponse};
 use errgonomic::{handle, handle_opt};
 use futures::TryStreamExt;
@@ -36,13 +36,17 @@ impl RenderAgentMessageGetThreadCodexCommand {
             })
         })
         .map_ok(|items| {
-            iter(items.into_iter().filter_map(|entry| match entry.item {
-                AgentMessage {
-                    text,
-                    ..
-                } => Some(Ok::<_, PageStreamError<ThreadItemsListParams, TypedRequestError>>(text)),
-                _ => None,
-            }))
+            iter(
+                items
+                    .into_iter()
+                    .filter_map(|entry| match entry.item.payload {
+                        AgentMessage {
+                            text,
+                            ..
+                        } => Some(Ok::<_, PageStreamError<ThreadItemsListParams, TypedRequestError>>(text)),
+                        _ => None,
+                    }),
+            )
         })
         .try_flatten()
         .try_skip_while(move |_| ready(Ok(skipped.next().is_some())));

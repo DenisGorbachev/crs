@@ -30,6 +30,7 @@ impl CodexCommand {
             subcommand,
         } = self;
         let args = RemoteAppServerConnectArgs {
+            required_human_approval: false,
             endpoint: app_server,
             client_name: env!("CARGO_PKG_NAME").into(),
             client_version: env!("CARGO_PKG_VERSION").into(),

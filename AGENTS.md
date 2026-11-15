@@ -528,13 +528,6 @@ A pkg that has a remote whose name contains `public` or `pre-public` and ends wi
 
 - Prefer `serde_with` to reduce code size by avoiding custom `Serialize`/`Deserialize` impls.
 
-### Guidelines for `subtype`
-
-- Define newtypes as ordinary tuple structs with explicit `From` / `TryFrom` impls.
-- Use `SerializeTransparent` derive from `subtype` for a refined newtype that must serialize identically to its inner field while using Serde's `try_from` container attr for validated deserialization.
-- Macro calls that begin with `subtype` (for example: `subtype!` and `subtype_string!`) are legacy APIs that expand to newtypes.
-  - Don't use them in new code because their checker and preprocessor concepts have been superseded by explicit conversion impls.
-
 ### Guidelines for `clap`
 
 #### Reqs
@@ -2265,14 +2258,9 @@ absolute_paths = "deny"
 arithmetic_side_effects = "deny"
 
 [workspace.dependencies]
-derive_more = { version = "2.1.1", features = ["full"] }
-derive-new = "0.7.0"
-derive-getters = { version = "0.5.0", features = ["auto_copy_getters"] }
 clap = { version = "4.5.11", features = ["derive", "env"] }
 errgonomic = { git = "https://github.com/DenisGorbachev/errgonomic" }
-standard-traits = { git = "https://github.com/DenisGorbachev/standard-traits" }
 strum = { version = "0.28.0", features = ["derive"] }
-subtype = { git = "https://github.com/DenisGorbachev/subtype" }
 thiserror = "2.0.21"
 tokio = { version = "1.39.2", features = ["macros", "fs", "net", "rt", "rt-multi-thread"] }
 futures = { version = "0.3.34" }
@@ -2282,13 +2270,13 @@ fjall = { version = "3.1.10" }
 rkyv = { version = "0.8.16", features = ["unaligned"] }
 pulldown-cmark = "0.13.0"
 uuid = "1.26.0"
-codex-protocol = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4", version = "0.153.4" }
+codex-protocol = { git = "https://github.com/openai/codex", tag = "rust-v0.169.0", version = "0.169.0" }
 # serde_json requires serde >= 1.0.220; retain the compatible lockfile version instead of pinning 1.0.0.
 serde = "1.0.0"
 serde_json = "1.0.0"
-codex-app-server-client = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4", version = "0.153.4" }
-codex-tui = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4", version = "0.153.4" }
-codex-app-server-protocol = { git = "https://github.com/openai/codex", tag = "rust-v0.153.4", version = "0.153.4" }
+codex-app-server-client = { git = "https://github.com/openai/codex", tag = "rust-v0.169.0", version = "0.169.0" }
+codex-tui = { git = "https://github.com/openai/codex", tag = "rust-v0.169.0", version = "0.169.0" }
+codex-app-server-protocol = { git = "https://github.com/openai/codex", tag = "rust-v0.169.0", version = "0.169.0" }
 interval-zoo = { git = "https://github.com/DenisGorbachev/interval-zoo" }
 
 [package]
@@ -2309,13 +2297,7 @@ workspace = true
 
 [dependencies]
 clap.workspace = true
-derive-getters.workspace = true
-derive-new.workspace = true
-derive_more.workspace = true
 errgonomic.workspace = true
-standard-traits.workspace = true
-strum.workspace = true
-subtype.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 futures.workspace = true
@@ -2335,13 +2317,16 @@ codex-tui.workspace = true
 
 [patch.crates-io]
 # `codex-tui` requires the buffered-input APIs from the Codex workspace's crossterm fork.
-crossterm = { git = "https://github.com/openai-oss-forks/crossterm", rev = "45fecb9508105988f42fe6ff0441783ed3717f92" }
+crossterm = { git = "https://github.com/openai-oss-forks/crossterm", rev = "ed1cdab335221515706178d68495bba2aed1924f" }
+# Keep Codex's SQLx driver and core on the same source for libsqlite3-sys 0.39 support.
+sqlx-core = { git = "https://github.com/transact-rs/sqlx", rev = "10462fa4414c6c7f1ed1d39bb31678e3b726878c" }
+sqlx-sqlite = { git = "https://github.com/transact-rs/sqlx", rev = "10462fa4414c6c7f1ed1d39bb31678e3b726878c" }
 # `codex-thread-store` relies on the fork-only proxy support used by the Codex workspace.
-tokio-tungstenite = { git = "https://github.com/openai-oss-forks/tokio-tungstenite", rev = "0e5b2d73aa18dd9f0a50ee9ff199d5aef7594186" }
-tungstenite = { git = "https://github.com/openai-oss-forks/tungstenite-rs", rev = "4fffad30fe373adbdcffab9545e9e9bf4f2fc19f" }
+tokio-tungstenite = { git = "https://github.com/openai-oss-forks/tokio-tungstenite", rev = "7447c427513cfe685f236e1ac0513c4ea3dd9c0b" }
+tungstenite = { git = "https://github.com/openai-oss-forks/tungstenite-rs", rev = "bc589d684755a8c02da0fc7e58d0861cbfc306f1" }
 
 [patch."ssh://git@github.com/openai-oss-forks/tungstenite-rs.git"]
-tungstenite = { git = "https://github.com/openai-oss-forks/tungstenite-rs", rev = "4fffad30fe373adbdcffab9545e9e9bf4f2fc19f" }
+tungstenite = { git = "https://github.com/openai-oss-forks/tungstenite-rs", rev = "bc589d684755a8c02da0fc7e58d0861cbfc306f1" }
 ```
 
 ### spec/Cargo.toml

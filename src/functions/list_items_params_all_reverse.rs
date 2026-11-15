@@ -9,5 +9,6 @@ pub fn list_items_params_all_reverse(thread_id: CodexThreadId) -> ThreadItemsLis
         sort_direction: Some(Desc),
         thread_id: thread_id.to_string(),
         turn_id: None,
+        defer_output: None,
     }
 }
