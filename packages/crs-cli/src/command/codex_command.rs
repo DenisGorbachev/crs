@@ -32,7 +32,7 @@ impl CodexCommand {
         let args = RemoteAppServerConnectArgs {
             required_human_approval: false,
             endpoint: app_server,
-            client_name: env!("CARGO_PKG_NAME").into(),
+            client_name: "crs".into(),
             client_version: env!("CARGO_PKG_VERSION").into(),
             experimental_api: true,
             mcp_server_openai_form_elicitation: false,

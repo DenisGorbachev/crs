@@ -23,11 +23,29 @@ use save_load::Format;
 use nu_path::{RelativePath, RelativePathBuf};
 ```
 
-## crs package
+## Workspace
+
+- Root `Cargo.toml` must define a virtual workspace.
+- Shared deps, package metadata, lints, patches must be defined at workspace root.
+- Codex deps must have same version.
+- Workspace members:
+  - `packages/crs-cli`: CLI implementation.
+  - `packages/crs-cli-spec`: CLI spec.
+  - `packages/crs-web`: web implementation.
+  - `packages/crs-web-spec`: web spec.
+  - `spec`: shared spec.
+
+## crs-cli-spec package
+
+- Must contain an empty `src/lib.rs`.
+
+## crs-cli package
+
+- Must expose binary `crs` from `src/main.rs`.
 
 ### file Cargo.toml
 
-- Codex dependencies have the same version
+- Deps must inherit workspace definitions.
 - Must have dependencies:
   - `globset`
   - `save-load`

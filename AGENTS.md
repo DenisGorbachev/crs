@@ -704,11 +704,29 @@ use save_load::Format;
 use nu_path::{RelativePath, RelativePathBuf};
 ```
 
-#### crs package
+#### Workspace
+
+- Root `Cargo.toml` must define a virtual workspace.
+- Shared deps, package metadata, lints, patches must be defined at workspace root.
+- Codex deps must have same version.
+- Workspace members:
+  - `packages/crs-cli`: CLI implementation.
+  - `packages/crs-cli-spec`: CLI spec.
+  - `packages/crs-web`: web implementation.
+  - `packages/crs-web-spec`: web spec.
+  - `spec`: shared spec.
+
+#### crs-cli-spec package
+
+- Must contain an empty `src/lib.rs`.
+
+#### crs-cli package
+
+- Must expose binary `crs` from `src/main.rs`.
 
 ##### file Cargo.toml
 
-- Codex dependencies have the same version
+- Deps must inherit workspace definitions.
 - Must have dependencies:
   - `globset`
   - `save-load`
@@ -2205,8 +2223,7 @@ age = { type = "age", recipients = [
 ```toml
 [workspace]
 resolver = "3"
-members = ["spec"]
-# "spec" must be a workspace member because mise tasks run only on the top-level workspace
+members = ["packages/*", "spec"]
 
 [workspace.package]
 version = "0.1.0"
@@ -2279,8 +2296,26 @@ codex-tui = { git = "https://github.com/openai/codex", tag = "rust-v0.169.0", ve
 codex-app-server-protocol = { git = "https://github.com/openai/codex", tag = "rust-v0.169.0", version = "0.169.0" }
 interval-zoo = { git = "https://github.com/DenisGorbachev/interval-zoo" }
 
+[patch.crates-io]
+# Codex's V8 patch is not required by CRS.
+# `codex-tui` requires the buffered-input APIs from the Codex workspace's crossterm fork.
+crossterm = { git = "https://github.com/openai-oss-forks/crossterm", rev = "ed1cdab335221515706178d68495bba2aed1924f" }
+# Keep Codex's SQLx driver and core on the same source for libsqlite3-sys 0.39 support.
+sqlx-core = { git = "https://github.com/transact-rs/sqlx", rev = "10462fa4414c6c7f1ed1d39bb31678e3b726878c" }
+sqlx-sqlite = { git = "https://github.com/transact-rs/sqlx", rev = "10462fa4414c6c7f1ed1d39bb31678e3b726878c" }
+# `codex-thread-store` relies on the fork-only proxy support used by the Codex workspace.
+tokio-tungstenite = { git = "https://github.com/openai-oss-forks/tokio-tungstenite", rev = "7447c427513cfe685f236e1ac0513c4ea3dd9c0b" }
+tungstenite = { git = "https://github.com/openai-oss-forks/tungstenite-rs", rev = "bc589d684755a8c02da0fc7e58d0861cbfc306f1" }
+
+[patch."ssh://git@github.com/openai-oss-forks/tungstenite-rs.git"]
+tungstenite = { git = "https://github.com/openai-oss-forks/tungstenite-rs", rev = "bc589d684755a8c02da0fc7e58d0861cbfc306f1" }
+```
+
+### packages/crs-cli-spec/Cargo.toml
+
+```toml
 [package]
-name = "crs"
+name = "crs-cli-spec"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -2289,11 +2324,29 @@ keywords.workspace = true
 categories.workspace = true
 exclude.workspace = true
 
-[package.metadata.details]
-title = ""
+[lints]
+workspace = true
+```
+
+### packages/crs-cli/Cargo.toml
+
+```toml
+[package]
+name = "crs-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+exclude.workspace = true
 
 [lints]
 workspace = true
+
+[[bin]]
+name = "crs"
+path = "src/main.rs"
 
 [dependencies]
 clap.workspace = true
@@ -2314,20 +2367,40 @@ interval-zoo.workspace = true
 serde.workspace = true
 codex-app-server-client.workspace = true
 codex-tui.workspace = true
+```
 
-[patch.crates-io]
-# Codex's V8 patch is not required by CRS.
-# `codex-tui` requires the buffered-input APIs from the Codex workspace's crossterm fork.
-crossterm = { git = "https://github.com/openai-oss-forks/crossterm", rev = "ed1cdab335221515706178d68495bba2aed1924f" }
-# Keep Codex's SQLx driver and core on the same source for libsqlite3-sys 0.39 support.
-sqlx-core = { git = "https://github.com/transact-rs/sqlx", rev = "10462fa4414c6c7f1ed1d39bb31678e3b726878c" }
-sqlx-sqlite = { git = "https://github.com/transact-rs/sqlx", rev = "10462fa4414c6c7f1ed1d39bb31678e3b726878c" }
-# `codex-thread-store` relies on the fork-only proxy support used by the Codex workspace.
-tokio-tungstenite = { git = "https://github.com/openai-oss-forks/tokio-tungstenite", rev = "7447c427513cfe685f236e1ac0513c4ea3dd9c0b" }
-tungstenite = { git = "https://github.com/openai-oss-forks/tungstenite-rs", rev = "bc589d684755a8c02da0fc7e58d0861cbfc306f1" }
+### packages/crs-web-spec/Cargo.toml
 
-[patch."ssh://git@github.com/openai-oss-forks/tungstenite-rs.git"]
-tungstenite = { git = "https://github.com/openai-oss-forks/tungstenite-rs", rev = "bc589d684755a8c02da0fc7e58d0861cbfc306f1" }
+```toml
+[package]
+name = "crs-web-spec"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+exclude.workspace = true
+
+[lints]
+workspace = true
+```
+
+### packages/crs-web/Cargo.toml
+
+```toml
+[package]
+name = "crs-web"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+exclude.workspace = true
+
+[lints]
+workspace = true
 ```
 
 ### spec/Cargo.toml
@@ -2350,17 +2423,13 @@ strum.workspace = true
 workspace = true
 ```
 
-### spec/src/lib.rs
+### packages/crs-cli-spec/src/lib.rs
 
 ```rust
-mod facts;
 
-pub use facts::*;
-mod types;
-pub use types::*;
 ```
 
-### src/lib.rs
+### packages/crs-cli/src/lib.rs
 
 ```rust
 #![allow(async_fn_in_trait)]
@@ -2380,11 +2449,11 @@ mod constants;
 pub use constants::*;
 ```
 
-### src/main.rs
+### packages/crs-cli/src/main.rs
 
 ```rust
 use clap::Parser;
-use crs::Command;
+use crs_cli::Command;
 use errgonomic::exit_result;
 use std::process::ExitCode;
 
@@ -2400,4 +2469,26 @@ fn verify_cli() {
     use clap::CommandFactory;
     Command::command().debug_assert();
 }
+```
+
+### packages/crs-web-spec/src/lib.rs
+
+```rust
+
+```
+
+### packages/crs-web/src/lib.rs
+
+```rust
+
+```
+
+### spec/src/lib.rs
+
+```rust
+mod facts;
+
+pub use facts::*;
+mod types;
+pub use types::*;
 ```

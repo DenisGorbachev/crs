@@ -1,5 +1,5 @@
 use clap::Parser;
-use crs::Command;
+use crs_cli::Command;
 use errgonomic::exit_result;
 use std::process::ExitCode;
 

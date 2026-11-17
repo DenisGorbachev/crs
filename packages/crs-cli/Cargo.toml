@@ -1,0 +1,36 @@
+[package]
+name = "crs-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+exclude.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "crs"
+path = "src/main.rs"
+
+[dependencies]
+clap.workspace = true
+errgonomic.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+futures.workspace = true
+git2.workspace = true
+timestamp-please.workspace = true
+fjall.workspace = true
+rkyv.workspace = true
+pulldown-cmark.workspace = true
+uuid = { workspace = true, features = ["v4"] }
+codex-protocol.workspace = true
+serde_json.workspace = true
+codex-app-server-protocol.workspace = true
+interval-zoo.workspace = true
+serde.workspace = true
+codex-app-server-client.workspace = true
+codex-tui.workspace = true

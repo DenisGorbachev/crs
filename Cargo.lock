@@ -5047,7 +5047,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "crs"
+name = "crs-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
@@ -5069,6 +5069,18 @@ dependencies = [
  "tokio",
  "uuid",
 ]
+
+[[package]]
+name = "crs-cli-spec"
+version = "0.1.0"
+
+[[package]]
+name = "crs-web"
+version = "0.1.0"
+
+[[package]]
+name = "crs-web-spec"
+version = "0.1.0"
 
 [[package]]
 name = "crunchy"

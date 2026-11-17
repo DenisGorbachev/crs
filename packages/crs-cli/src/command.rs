@@ -4,7 +4,7 @@ use std::process::ExitCode;
 use thiserror::Error;
 
 #[derive(clap::Parser, Debug)]
-#[command(author, version, about, propagate_version = true, flatten_help = true, disable_help_subcommand = true)]
+#[command(name = "crs", author, version, about, propagate_version = true, flatten_help = true, disable_help_subcommand = true)]
 pub struct Command {
     #[command(subcommand)]
     subcommand: Subcommand,
