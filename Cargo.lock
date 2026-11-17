@@ -5073,6 +5073,9 @@ dependencies = [
 [[package]]
 name = "crs-cli-spec"
 version = "0.1.0"
+dependencies = [
+ "strum 0.28.0",
+]
 
 [[package]]
 name = "crs-web"
@@ -12652,13 +12655,6 @@ checksum = "94bf565ee1681b4473aa5a9d71d807347c28021bd1d8947cb626b02f42a0141f"
 dependencies = [
  "itertools",
  "quickcheck",
-]
-
-[[package]]
-name = "spec"
-version = "0.1.0"
-dependencies = [
- "strum 0.28.0",
 ]
 
 [[package]]

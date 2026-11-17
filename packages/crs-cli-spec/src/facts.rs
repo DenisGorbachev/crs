@@ -7,7 +7,9 @@ pub fn rust_items_may_be_interdependent() -> bool {
 }
 
 pub fn interdependent_rust_item_examples() -> &'static [&'static str] {
-    &[include_str!("../../fixtures/basic/src/interdependent.rs")]
+    &[include_str!(
+        "../../../fixtures/basic/src/interdependent.rs"
+    )]
 }
 
 pub fn rust_files_may_contain_meaningful_non_item_lines() -> bool {
