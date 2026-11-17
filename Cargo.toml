@@ -111,6 +111,7 @@ codex-app-server-client.workspace = true
 codex-tui.workspace = true
 
 [patch.crates-io]
+# Codex's V8 patch is not required by CRS.
 # `codex-tui` requires the buffered-input APIs from the Codex workspace's crossterm fork.
 crossterm = { git = "https://github.com/openai-oss-forks/crossterm", rev = "ed1cdab335221515706178d68495bba2aed1924f" }
 # Keep Codex's SQLx driver and core on the same source for libsqlite3-sys 0.39 support.
