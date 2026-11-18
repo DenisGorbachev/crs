@@ -2499,6 +2499,10 @@ fn verify_cli() {
 
 mod app;
 pub use app::*;
+mod message_form;
+pub use message_form::*;
+mod message_submission;
+pub use message_submission::*;
 mod codex_app_server;
 pub use codex_app_server::*;
 mod codex_connection;

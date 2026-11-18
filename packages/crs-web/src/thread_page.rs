@@ -1,4 +1,4 @@
-use crate::{Config, Route, ThreadHistory, ThreadRecord, ThreadStore, UrlSegment, page_error, thread_item_view};
+use crate::{Config, MessageForm, Route, ThreadHistory, ThreadRecord, ThreadStore, UrlSegment, page_error, thread_item_view, turn_anchor};
 use codex_app_server_protocol::ThreadItem;
 use dioxus::prelude::*;
 use errgonomic::{ErrorDisplayer, handle};
@@ -15,7 +15,7 @@ pub struct ThreadPage {
 }
 
 impl ThreadPage {
-    pub fn render(self) -> Result<Element, ThreadPageRenderError> {
+    pub fn render(self, source: &str) -> Result<Element, ThreadPageRenderError> {
         use ThreadPageRenderError::*;
         let Self {
             record,
@@ -43,7 +43,7 @@ impl ThreadPage {
                 fields.remove("items");
             }
             turns.push(rsx! {
-                section {
+                section { id: turn_anchor(&turn.id),
                     h2 { "Turn {number}" }
                     if let Some(error) = &turn.error { p { role: "alert", "{error.message}" } }
                     details { summary { "Turn details · {turn.status:?}" } pre { "{metadata:#}" } }
@@ -61,12 +61,17 @@ impl ThreadPage {
             details { summary { "Thread details" } pre { "{metadata}" } }
             if turns.is_empty() { p { "No turns in this thread." } }
             {turns.into_iter()}
+            if record.thread.can_accept_direct_input == Some(false) {
+                p { "This thread does not accept direct messages." }
+            } else {
+                MessageForm { source: source.to_owned(), thread_id: record.thread.id.clone() }
+            }
         })
     }
 }
 
 #[component]
-pub fn ThreadView(source: ReadSignal<UrlSegment>, id: ReadSignal<UrlSegment>) -> Element {
+pub fn ThreadView(source: ReadSignal<UrlSegment>, id: ReadSignal<UrlSegment>, anchor: String) -> Element {
     let store = use_context::<ThreadStore>();
     let config = use_context::<Arc<Config>>();
     let page = use_resource(move || {
@@ -82,7 +87,7 @@ pub fn ThreadView(source: ReadSignal<UrlSegment>, id: ReadSignal<UrlSegment>) ->
             })
             .await;
             match result {
-                Ok(Ok(Some(page))) => match page.render() {
+                Ok(Ok(Some(page))) => match page.render(&name) {
                     Ok(content) => return (StatusCode::OK, content),
                     Err(error) => error!(%name, %id, error = %ErrorDisplayer(&error), "failed to render saved thread"),
                 },

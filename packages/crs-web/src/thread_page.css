@@ -9,3 +9,7 @@ article img, article audio { display: block; max-width: 100%; }
 summary { cursor: pointer; }
 dt { font-weight: 600; }
 dd, ol { margin: 0 0 .5rem; padding-inline-start: 1rem; }
+form { display: grid; gap: .5rem; margin-block: 1.5rem; }
+textarea { box-sizing: border-box; width: 100%; resize: vertical; padding: .5rem; font: inherit; }
+button { justify-self: start; padding: .4rem .9rem; font: inherit; cursor: pointer; }
+section:target { scroll-margin-block-start: 1rem; }

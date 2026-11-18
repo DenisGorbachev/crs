@@ -1,4 +1,4 @@
-use crate::{CodexAppServer, CodexConnection, CodexConnectionRequestError, Config, ThreadHistory, ThreadRecord, ThreadStore, ThreadStoreWriteError};
+use crate::{CodexAppServer, CodexConnection, CodexConnectionRequestError, Config, ThreadHistory, ThreadHistoryFetchError, ThreadRecord, ThreadStore, ThreadStoreWriteError};
 use codex_app_server_client::{AppServerClient, AppServerEvent};
 use codex_app_server_protocol::ThreadSourceKind::*;
 use codex_app_server_protocol::{ClientRequest, JSONRPCErrorError, RequestId, ServerNotification, SortDirection, ThreadListParams, ThreadListResponse, ThreadSortKey};
@@ -7,8 +7,8 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 use thiserror::Error;
-use tokio::sync::{Notify, watch};
-use tokio::task::JoinSet;
+use tokio::sync::{Mutex, Notify, watch};
+use tokio::task::{JoinError, spawn_blocking};
 use tokio::time::sleep;
 use tracing::warn;
 use uuid::Uuid;
@@ -18,10 +18,12 @@ pub struct CodexSync {
     pub source: CodexAppServer,
     pub config: Arc<Config>,
     pub store: ThreadStore,
+    pub writer: Arc<Mutex<()>>,
+    pub refresh: Notify,
 }
 
 impl CodexSync {
-    pub async fn run(self, mut shutdown: watch::Receiver<()>) {
+    pub async fn run(self: Arc<Self>, mut shutdown: watch::Receiver<()>) {
         loop {
             let connection = tokio::select! {
                 _ = shutdown.changed() => return,
@@ -29,24 +31,18 @@ impl CodexSync {
             };
             match connection {
                 Ok(mut client) => {
-                    let refresh = Notify::new();
-                    let connection = CodexConnection {
-                        requests: client.request_handle(),
-                        reconnect: Notify::new(),
-                    };
-                    let mut writes = JoinSet::new();
+                    let connection = CodexConnection::from(&client);
                     let disconnected = tokio::select! {
                         biased;
                         _ = shutdown.changed() => false,
                         () = connection.reconnect.notified() => true,
-                        () = self.consume_events(&mut client, &refresh) => true,
-                        () = self.reconcile_periodically(&connection, &refresh, &mut writes) => true,
+                        () = self.consume_events(&mut client, &self.refresh) => true,
+                        () = self.reconcile_periodically(&connection, &self.refresh) => true,
                     };
                     drop(connection);
                     if let Err(error) = client.shutdown().await {
                         warn!(server_id = self.server_id, error = %error, "failed to close Codex connection");
                     }
-                    self.finish_writes(&mut writes).await;
                     if !disconnected {
                         return;
                     }
@@ -80,7 +76,7 @@ impl CodexSync {
                     let error = JSONRPCErrorError {
                         code: -32601,
                         data: None,
-                        message: "CRS-Web only reads thread history".into(),
+                        message: "This connection synchronizes thread history".into(),
                     };
                     if let Err(error) = client
                         .reject_server_request(request.id().clone(), error)
@@ -94,9 +90,9 @@ impl CodexSync {
         }
     }
 
-    async fn reconcile_periodically(&self, client: &CodexConnection, refresh: &Notify, writes: &mut JoinSet<Result<(), ThreadStoreWriteError>>) {
+    async fn reconcile_periodically(&self, client: &CodexConnection, refresh: &Notify) {
         loop {
-            self.reconcile(client, writes).await;
+            self.reconcile(client).await;
             tokio::select! {
                 () = refresh.notified() => (),
                 () = sleep(self.config.reconcile_interval()) => (),
@@ -104,13 +100,13 @@ impl CodexSync {
         }
     }
 
-    async fn reconcile(&self, client: &CodexConnection, writes: &mut JoinSet<Result<(), ThreadStoreWriteError>>) {
+    async fn reconcile(&self, client: &CodexConnection) {
         let mut parents = vec![None];
         let mut discovered = HashSet::new();
         while let Some(parent) = parents.pop() {
             for archived in [false, true] {
                 if let Err(error) = self
-                    .scan(client, parent.clone(), archived, &mut discovered, &mut parents, writes)
+                    .scan(client, parent.clone(), archived, &mut discovered, &mut parents)
                     .await
                 {
                     warn!(server_id = self.server_id, error = %ErrorDisplayer(&error), "failed to list Codex threads");
@@ -119,7 +115,7 @@ impl CodexSync {
         }
     }
 
-    async fn scan(&self, client: &CodexConnection, parent: Option<String>, archived: bool, discovered: &mut HashSet<String>, parents: &mut Vec<Option<String>>, writes: &mut JoinSet<Result<(), ThreadStoreWriteError>>) -> Result<(), CodexSyncScanError> {
+    async fn scan(&self, client: &CodexConnection, parent: Option<String>, archived: bool, discovered: &mut HashSet<String>, parents: &mut Vec<Option<String>>) -> Result<(), CodexSyncScanError> {
         use CodexSyncScanError::*;
         let mut seen_cursors = HashSet::new();
         let mut cursor = None;
@@ -166,22 +162,15 @@ impl CodexSync {
                 if !self.config.includes_thread(thread.created_at) {
                     continue;
                 }
-                let history = match ThreadHistory::fetch(client, &thread).await {
-                    Ok(history) => history,
-                    Err(error) => {
-                        warn!(server_id = self.server_id, error = %ErrorDisplayer(&error), "failed to fetch Codex history");
-                        continue;
-                    }
-                };
                 let record = ThreadRecord {
                     archived,
+                    last_turn_id: None,
                     read_state: read_states.remove(&thread.id),
                     thread,
                 };
-                let store = self.store.clone();
-                let server_id = self.server_id.clone();
-                writes.spawn_blocking(move || store.write(&server_id, record, history));
-                self.finish_writes(writes).await;
+                if let Err(error) = self.save_thread(client, record, None).await {
+                    warn!(server_id = self.server_id, error = %ErrorDisplayer(&error), "failed to synchronize Codex thread");
+                }
             }
             let Some(next_cursor) = response.next_cursor else {
                 return Ok(());
@@ -191,15 +180,53 @@ impl CodexSync {
         }
     }
 
-    async fn finish_writes(&self, writes: &mut JoinSet<Result<(), ThreadStoreWriteError>>) {
-        while let Some(result) = writes.join_next().await {
-            match result {
-                Ok(Ok(())) => (),
-                Ok(Err(error)) => warn!(server_id = self.server_id, error = %ErrorDisplayer(&error), "failed to store Codex history"),
-                Err(error) => warn!(server_id = self.server_id, error = %error, "Codex history storage task failed"),
+    pub async fn save_thread(&self, client: &CodexConnection, record: ThreadRecord, expected_message: Option<(&str, &str)>) -> Result<(), CodexSyncSaveThreadError> {
+        use CodexSyncSaveThreadError::*;
+        let guard = self.writer.clone().lock_owned().await;
+        let mut fetched = ThreadHistory::fetch(client, &record.thread).await;
+        if let Some((turn_id, message_id)) = expected_message {
+            for delay in [75, 150, 300, 600, 1000] {
+                if fetched
+                    .as_ref()
+                    .is_ok_and(|history| history.contains_message(turn_id, message_id))
+                {
+                    break;
+                }
+                sleep(Duration::from_millis(delay)).await;
+                fetched = ThreadHistory::fetch(client, &record.thread).await;
             }
+            handle_bool!(
+                fetched
+                    .as_ref()
+                    .is_ok_and(|history| !history.contains_message(turn_id, message_id)),
+                MessageNotFound,
+                turn_id,
+                message_id
+            );
         }
+        let history = handle!(fetched, FetchFailed);
+        let store = self.store.clone();
+        let server_id = self.server_id.clone();
+        let write = spawn_blocking(move || {
+            let _guard = guard;
+            store.write(&server_id, record, history)
+        })
+        .await;
+        handle!(handle!(write, JoinFailed), WriteFailed);
+        Ok(())
     }
+}
+
+#[derive(Error, Debug)]
+pub enum CodexSyncSaveThreadError {
+    #[error("acknowledged message '{message_id}' is not visible in turn '{turn_id}' yet")]
+    MessageNotFound { turn_id: String, message_id: String },
+    #[error("failed to fetch Codex thread history")]
+    FetchFailed { source: ThreadHistoryFetchError },
+    #[error("thread storage task failed")]
+    JoinFailed { source: JoinError },
+    #[error("failed to store Codex thread history")]
+    WriteFailed { source: ThreadStoreWriteError },
 }
 
 #[derive(Error, Debug)]
@@ -209,3 +236,6 @@ pub enum CodexSyncScanError {
     #[error("Codex returned a repeated thread cursor (archived: {archived}, parent: {parent:?})")]
     CursorInvalid { archived: bool, parent: Option<String> },
 }
+
+mod send;
+pub use send::*;

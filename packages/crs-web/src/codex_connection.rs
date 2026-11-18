@@ -1,4 +1,4 @@
-use codex_app_server_client::{AppServerRequestHandle, TypedRequestError};
+use codex_app_server_client::{AppServerClient, AppServerRequestHandle, TypedRequestError};
 use codex_app_server_protocol::ClientRequest;
 use errgonomic::handle;
 use serde::de::DeserializeOwned;
@@ -11,6 +11,15 @@ use tokio::time::timeout;
 pub struct CodexConnection {
     pub requests: AppServerRequestHandle,
     pub reconnect: Notify,
+}
+
+impl From<&AppServerClient> for CodexConnection {
+    fn from(client: &AppServerClient) -> Self {
+        Self {
+            requests: client.request_handle(),
+            reconnect: Notify::new(),
+        }
+    }
 }
 
 impl CodexConnection {

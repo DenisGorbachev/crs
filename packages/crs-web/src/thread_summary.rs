@@ -8,6 +8,8 @@ pub struct ThreadSummary {
     pub archived: bool,
     pub title: String,
     pub updated_at: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_turn_id: Option<String>,
 }
 
 impl From<(&str, ThreadRecord)> for ThreadSummary {
@@ -19,6 +21,7 @@ impl From<(&str, ThreadRecord)> for ThreadSummary {
             archived: record.archived,
             title,
             updated_at: record.thread.updated_at,
+            last_turn_id: record.last_turn_id,
         }
     }
 }

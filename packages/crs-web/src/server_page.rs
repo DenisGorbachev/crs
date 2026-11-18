@@ -1,4 +1,4 @@
-use crate::{Config, Route, ThreadStore, UrlSegment, page_error};
+use crate::{Config, MessageForm, Route, ThreadStore, UrlSegment, page_error};
 use dioxus::prelude::*;
 use errgonomic::ErrorDisplayer;
 use std::iter::once;
@@ -39,11 +39,12 @@ pub fn ServerPage(source: ReadSignal<UrlSegment>) -> Element {
         match &*data {
             Ok(threads) => rsx! {
                 h1 { "{source().value}" }
+                details { summary { "New thread" } MessageForm { source: source().value } }
                 if threads.is_empty() { p { "No synchronized threads yet." } }
                 ul {
                     for thread in threads {
                         li { key: "{thread.id}",
-                            Link { to: Route::Thread { source: source(), id: UrlSegment { value: thread.id.clone() } }, "{thread.title}" }
+                            Link { to: Route::thread(source(), thread.id.clone(), thread.last_turn_id.as_deref()), "{thread.title}" }
                             if thread.archived { " · Archived" }
                         }
                     }

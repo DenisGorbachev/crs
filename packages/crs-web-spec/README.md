@@ -1,6 +1,6 @@
 # CRS-Web specification
 
-CRS-Web mirrors durable Codex thread history into Fjall and serves it through a read-only Dioxus UI.
+CRS-Web mirrors durable Codex thread history into Fjall and accepts messages through its Dioxus UI.
 
 ## Configuration
 
@@ -57,7 +57,13 @@ Omitting `socket_path` selects the control socket under `CODEX_HOME`, which defa
 Dioxus `Router<Route>` renders pages and typed `Link` components generate URLs. [Dioxus routing guide](https://dioxuslabs.com/learn/0.7/essentials/router/).
 
 - `/` lists all configured Codex servers, including those with no synchronized threads.
-- `/servers/<source>` lists that server’s threads by most recent update.
-- `/servers/<source>/threads/<id>` displays the full synchronized history in turn and item order, including messages, command output and structured data.
+- `/servers/<source>` lists top-level threads by most recent update. Exclude attached children and subagents, including subagents without a recorded parent ID. A standalone fork remains eligible. Each link targets `#turn-<id>` for the chronologically last turn, including an ongoing, failed or interrupted turn. A thread with no turns opens without a fragment.
+- `/servers/<source>/threads/<id>` displays the full synchronized history in turn and item order, including messages, command output and structured data. Each turn has a stable HTML ID.
 
 Unknown sources, missing threads and threads outside the cutoff return HTTP 404. `/api/threads` returns summaries across all configured servers.
+
+## Messages
+
+The server page accepts a first message for a new thread. The thread page accepts a follow-up when direct input is available. Both forms work with native HTML POST. Preserve nonblank message text and reject whitespace-only input.
+
+Use `thread/start` for a new thread or `thread/resume` with `excludeTurns` for an existing thread on its configured source. Submit one `turn/start` with a fresh client message ID and the server’s existing settings. Codex starts an idle turn or steers the active turn. After acknowledgement, redirect to the returned turn once the saved history contains the submitted client message ID. If synchronization takes longer, show a receipt with a thread link. Never retry input automatically.

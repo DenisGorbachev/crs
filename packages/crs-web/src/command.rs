@@ -1,4 +1,5 @@
-use crate::{App, CodexSync, Server, ServerOpenError, SharedServer};
+use crate::{App, Server, ServerOpenError, SharedServer, submit_message};
+use axum::routing::post;
 use axum::{Extension, Router, serve};
 use clap::Parser;
 use dioxus::cli_config::fullstack_address_or_localhost;
@@ -29,11 +30,15 @@ impl Command {
         let server = handle!(Server::open(self.config), OpenServerFailed);
         let store = server.threads.clone();
         let config = server.config.clone();
+        let sources: Vec<_> = server.sources.values().cloned().collect();
+        let form_key = server.form_key;
         let server: SharedServer = Arc::new(Mutex::new(server));
         let router = Router::new()
+            .route("/messages", post(submit_message))
             .serve_api_application(
                 ServeConfig::new()
-                    .context(config.clone())
+                    .context(form_key)
+                    .context(config)
                     .context(store.clone()),
                 App,
             )
@@ -42,16 +47,8 @@ impl Command {
         let listener = handle!(TcpListener::bind(address).await, BindFailed, address);
         let (shutdown, receiver) = watch::channel(());
         let mut workers = JoinSet::new();
-        config.codex_app_servers.iter().for_each(|(id, source)| {
-            workers.spawn(
-                CodexSync {
-                    server_id: id.clone(),
-                    source: source.clone(),
-                    config: config.clone(),
-                    store: store.clone(),
-                }
-                .run(receiver.clone()),
-            );
+        sources.into_iter().for_each(|source| {
+            workers.spawn(source.run(receiver.clone()));
         });
         info!(%address, "serving CRS-Web");
         let result = serve(listener, router)

@@ -1,5 +1,5 @@
 use crate::{CodexConnection, FetchPagesError, fetch_pages};
-use codex_app_server_protocol::{ClientRequest, RequestId, SortDirection, Thread, ThreadHistoryMode, ThreadItemEntry, ThreadItemsListCursor, ThreadItemsListParams, ThreadItemsListResponse, ThreadTurnsListParams, ThreadTurnsListResponse, Turn, TurnItemsView};
+use codex_app_server_protocol::{ClientRequest, RequestId, SortDirection, Thread, ThreadHistoryMode, ThreadItemEntry, ThreadItemPayload, ThreadItemsListCursor, ThreadItemsListParams, ThreadItemsListResponse, ThreadTurnsListParams, ThreadTurnsListResponse, Turn, TurnItemsView};
 use errgonomic::{handle, handle_bool};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -13,6 +13,26 @@ pub struct ThreadHistory {
 }
 
 impl ThreadHistory {
+    pub fn last_turn_id(&self) -> Option<&str> {
+        self.turns.last().map(|turn| turn.id.as_str())
+    }
+
+    pub fn contains_message(&self, turn_id: &str, message_id: &str) -> bool {
+        let embedded = self
+            .turns
+            .iter()
+            .filter(|turn| turn.id == turn_id)
+            .flat_map(|turn| &turn.items);
+        let paginated = self
+            .items
+            .iter()
+            .filter(|entry| entry.turn_id == turn_id)
+            .map(|entry| &entry.item);
+        embedded
+            .chain(paginated)
+            .any(|item| matches!(&item.payload, ThreadItemPayload::UserMessage { client_id: Some(id), .. } if id == message_id))
+    }
+
     pub async fn fetch(client: &CodexConnection, thread: &Thread) -> Result<Self, ThreadHistoryFetchError> {
         use ThreadHistoryFetchError::*;
         let thread_id = thread.id.as_str();
