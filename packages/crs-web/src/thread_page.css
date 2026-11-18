@@ -4,7 +4,6 @@ h1, h2, h3 { line-height: 1.2; }
 section { margin-top: 2.5rem; }
 article { border-inline-start: 2px solid GrayText; margin-block: 1.25rem; padding-inline-start: 1rem; }
 pre { white-space: pre-wrap; overflow-wrap: anywhere; }
-.message { font: inherit; }
 article img, article audio { display: block; max-width: 100%; }
 summary { cursor: pointer; }
 dt { font-weight: 600; }
@@ -12,4 +11,37 @@ dd, ol { margin: 0 0 .5rem; padding-inline-start: 1rem; }
 form { display: grid; gap: .5rem; margin-block: 1.5rem; }
 textarea { box-sizing: border-box; width: 100%; resize: vertical; padding: .5rem; font: inherit; }
 button { justify-self: start; padding: .4rem .9rem; font: inherit; cursor: pointer; }
-section:target { scroll-margin-block-start: 1rem; }
+[hidden] { display: none !important; }
+#thread-review { --nav-height: 3.25rem; --draft-height: 0px; padding-bottom: calc(2rem + var(--draft-height)); }
+#thread-review :is(section, article[data-response]) { scroll-margin-top: calc(var(--nav-height) + 8px); }
+article[aria-current="true"] { border-inline-start-color: Highlight; }
+.response-nav {
+    position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: .25rem;
+    background: Canvas; border-bottom: 1px solid GrayText; padding: .25rem 0;
+}
+.response-nav button, .quote-controls button { touch-action: manipulation; min-height: 2.75rem; }
+.response-nav button { flex: 1; padding-inline: .25rem; }
+.markdown { overflow-x: auto; }
+.markdown table { border-collapse: collapse; }
+.markdown th, .markdown td { padding: .35rem .6rem; border: 1px solid GrayText; }
+.markdown blockquote { border-inline-start: 2px solid GrayText; margin-inline: .5rem; padding-inline: .75rem; }
+.markdown pre { white-space: pre; overflow: auto; padding: .75rem; background: color-mix(in srgb, CanvasText 6%, Canvas); }
+#thread-review:is([data-quote-mode="once"], [data-quote-mode="persistent"]) .quote-chunk { cursor: pointer; }
+#thread-review:is([data-quote-mode="once"], [data-quote-mode="persistent"]) .quote-chunk:is(:hover, :focus-visible) { background: Highlight; color: HighlightText; }
+.has-draft .thread-draft {
+    position: fixed; z-index: 2; bottom: 0; inset-inline: 0; box-sizing: border-box; max-width: 76ch;
+    margin: 0 auto; background: Canvas; border-top: 1px solid GrayText; padding: .4rem 1rem max(.4rem, env(safe-area-inset-bottom));
+    max-height: 45dvh; overflow: auto; gap: .25rem;
+}
+.quote-controls, .draft-actions { display: flex; align-items: center; flex-wrap: wrap; gap: .25rem .75rem; }
+.quote-controls label { margin-inline-start: auto; }
+.quote-controls button[aria-pressed="true"] { color: HighlightText; background: Highlight; }
+.has-draft textarea { height: 3rem; min-height: 2rem; max-height: 18dvh; resize: none; }
+.has-draft textarea:focus { height: 8rem; }
+.draft-actions [role="status"] { flex: 1; font-size: .875rem; }
+@media (max-width: 36rem) {
+    main { margin-top: .5rem; }
+    .has-draft .thread-draft { padding-inline: .6rem; }
+    .quote-controls { font-size: .875rem; }
+    .quote-controls small { max-width: 14ch; }
+}

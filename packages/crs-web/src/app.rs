@@ -11,7 +11,7 @@ use tracing::error;
 #[component]
 pub fn App() -> Element {
     rsx! {
-        document::Meta { name: "viewport", content: "width=device-width, initial-scale=1" }
+        document::Meta { name: "viewport", content: "width=device-width, initial-scale=1, interactive-widget=resizes-content" }
         document::Style { {include_str!("thread_page.css")} }
         ErrorBoundary {
             handle_error: |context: ErrorContext| {

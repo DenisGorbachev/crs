@@ -67,3 +67,11 @@ Unknown sources, missing threads and threads outside the cutoff return HTTP 404.
 The server page accepts a first message for a new thread. The thread page accepts a follow-up when direct input is available. Both forms work with native HTML POST. Preserve nonblank message text and reject whitespace-only input.
 
 Use `thread/start` for a new thread or `thread/resume` with `excludeTurns` for an existing thread on its configured source. Submit one `turn/start` with a fresh client message ID and the server’s existing settings. Codex starts an idle turn or steers the active turn. After acknowledgement, redirect to the returned turn once the saved history contains the submitted client message ID. If synchronization takes longer, show a receipt with a thread link. Never retry input automatically.
+
+## Quoting thread messages
+
+Keep one editable draft at the bottom of the thread. Append quotations without opening the keyboard. Save by source and thread in the browser until Codex acknowledges Send. Preserve conflicting edits in their respective tabs. The top bar jumps to either end or to the previous or next user or assistant response.
+
+Tap **Quote** once to quote one chunk, twice quickly to keep quoting. Tap the active button to cancel. **Quote by default** opens threads in persistent selection mode. Links follow their destinations when selection is off.
+
+Quote prose by sentence across inline formatting, within each paragraph, list item, heading or table cell. Prefix every line with `> `. Tapping inline code quotes that code span. In Rust, Python and JavaScript blocks, Tree-sitter selects identifiers or the construct introduced by a function, conditional or match keyword. Use line selection for unsupported languages or unresolved syntax. Preserve code inside a blockquoted fence longer than every backtick run in the selection. [Commenting design](https://chatgpt.com/share/6afd89c9-69a0-83ec-8c61-59a378ec9d61).

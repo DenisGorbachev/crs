@@ -2,3 +2,7 @@ mod fetch_pages;
 pub use fetch_pages::*;
 mod thread_item_view;
 pub use thread_item_view::*;
+mod markdown_view;
+pub use markdown_view::*;
+mod code_ranges;
+pub use code_ranges::*;

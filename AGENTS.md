@@ -2282,6 +2282,11 @@ timestamp-please = { git = "https://github.com/DenisGorbachev/timestamp-please",
 fjall = { version = "3.1.10" }
 rkyv = { version = "0.8.16", features = ["unaligned"] }
 pulldown-cmark = "0.13.0"
+# codex-shell-command requires tree-sitter >= 0.25.10.
+tree-sitter = "0.25.0"
+tree-sitter-javascript = "0.25.0"
+tree-sitter-python = "0.25.0"
+tree-sitter-rust = "0.24.0"
 uuid = "1.26.0"
 codex-protocol = { git = "https://github.com/openai/codex", tag = "rust-v0.169.0", version = "0.169.0" }
 # serde_json requires serde >= 1.0.220; retain the compatible lockfile version instead of pinning 1.0.0.
@@ -2423,6 +2428,7 @@ derive_more.workspace = true
 dioxus = { workspace = true, features = ["router", "document"] }
 errgonomic.workspace = true
 fjall.workspace = true
+pulldown-cmark.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 thiserror.workspace = true
@@ -2430,6 +2436,10 @@ time.workspace = true
 tokio = { workspace = true, features = ["signal", "sync", "time"] }
 toml.workspace = true
 tracing.workspace = true
+tree-sitter.workspace = true
+tree-sitter-javascript.workspace = true
+tree-sitter-python.workspace = true
+tree-sitter-rust.workspace = true
 url.workspace = true
 uuid = { workspace = true, features = ["v4"] }
 ```

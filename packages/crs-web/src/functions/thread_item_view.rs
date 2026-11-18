@@ -1,3 +1,4 @@
+use crate::markdown_view;
 use dioxus::prelude::*;
 use serde_json::Value;
 use std::mem::take;
@@ -11,7 +12,7 @@ pub fn thread_item_view(mut item: Value) -> Element {
             let inputs = content.as_array().into_iter().flatten().map(|input| {
                 if let Some(text) = input.get("text").and_then(Value::as_str) {
                     rsx! {
-                        pre { class: "message", span { "{text}" } }
+                        {markdown_view(text)}
                         if let Some(spans) = input.get("text_elements").filter(|v| v.as_array().is_some_and(|a| !a.is_empty())) {
                             details { summary { "Text spans" } {structured_value(spans)} }
                         }
@@ -33,7 +34,7 @@ pub fn thread_item_view(mut item: Value) -> Element {
         }
         Some(kind @ ("agentMessage" | "plan")) => {
             let text = fields.remove("text").unwrap_or_default();
-            (if kind == "agentMessage" { "Assistant" } else { "Plan" }, rsx! { pre { class: "message", span { {text.as_str()} } } })
+            (if kind == "agentMessage" { "Assistant" } else { "Plan" }, markdown_view(text.as_str().unwrap_or_default()))
         }
         Some("commandExecution") => {
             let command = fields.remove("command").unwrap_or_default();
@@ -50,7 +51,7 @@ pub fn thread_item_view(mut item: Value) -> Element {
             (kind.unwrap_or("Item"), structured_value(&Value::Object(payload)))
         }
     };
-    rsx! { article {
+    rsx! { article { "data-response": matches!(kind.as_str(), Some("userMessage" | "agentMessage")).then_some(""),
         h3 { "{heading}" }
         {body}
         details { summary { "Item details" } pre { "{item:#}" } }

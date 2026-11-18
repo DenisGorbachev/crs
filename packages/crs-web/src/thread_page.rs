@@ -104,13 +104,20 @@ pub fn ThreadView(source: ReadSignal<UrlSegment>, id: ReadSignal<UrlSegment>, an
     if *status != StatusCode::OK {
         page_error(*status);
     }
-    rsx! { main {
+    rsx! { main { id: "thread-review",
         nav {
             Link { to: Route::Home {}, "Servers" }
             " / "
             Link { to: Route::Server { source: source() }, "{source().value}" }
         }
+        if *status == StatusCode::OK { nav { class: "response-nav", aria_label: "Message navigation", hidden: true,
+            button { r#type: "button", "data-go": "first", "Beginning" }
+            button { r#type: "button", "data-go": "previous", aria_label: "Previous message", "Previous" }
+            button { r#type: "button", "data-go": "next", aria_label: "Next message", "Next" }
+            button { r#type: "button", "data-go": "last", "End" }
+        } }
         {content.clone()}
+        if *status == StatusCode::OK { script { r#type: "module", src: "/thread-review.js" } }
     } }
 }
 

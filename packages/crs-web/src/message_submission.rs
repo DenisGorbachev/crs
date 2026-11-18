@@ -1,7 +1,7 @@
 use crate::{CodexAppServerConnectError, CodexConnection, CodexSyncSendError, Route, SharedServer, ThreadStoreRecordError};
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode, header::ACCEPT};
 use axum::response::{IntoResponse, Redirect, Response};
-use axum::{Extension, Form};
+use axum::{Extension, Form, Json};
 use errgonomic::{ErrorDisplayer, handle, handle_bool, handle_opt};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -18,8 +18,15 @@ pub struct MessageSubmission {
     pub form_key: String,
 }
 
-pub async fn submit_message(Extension(server): Extension<SharedServer>, Form(form): Form<MessageSubmission>) -> Response {
+pub async fn submit_message(Extension(server): Extension<SharedServer>, headers: HeaderMap, Form(form): Form<MessageSubmission>) -> Response {
     match form.send(server).await {
+        Ok(route)
+            if headers
+                .get(ACCEPT)
+                .is_some_and(|header| header == "application/json") =>
+        {
+            Json(route.to_string()).into_response()
+        }
         Ok(route) => Redirect::to(&route.to_string()).into_response(),
         Err(error) => {
             let status = error.status();

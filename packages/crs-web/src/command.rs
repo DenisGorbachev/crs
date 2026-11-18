@@ -1,5 +1,6 @@
 use crate::{App, Server, ServerOpenError, SharedServer, submit_message};
-use axum::routing::post;
+use axum::http::header::CONTENT_TYPE;
+use axum::routing::{get, post};
 use axum::{Extension, Router, serve};
 use clap::Parser;
 use dioxus::cli_config::fullstack_address_or_localhost;
@@ -35,6 +36,7 @@ impl Command {
         let server: SharedServer = Arc::new(Mutex::new(server));
         let router = Router::new()
             .route("/messages", post(submit_message))
+            .route("/thread-review.js", get(async || ([(CONTENT_TYPE, "text/javascript; charset=utf-8")], include_str!("thread_review.js"))))
             .serve_api_application(
                 ServeConfig::new()
                     .context(form_key)
