@@ -8,3 +8,13 @@ pub struct ThreadRecord {
     pub read_state: Option<ThreadReadState>,
     pub thread: Thread,
 }
+
+impl ThreadRecord {
+    pub fn title(&self) -> &str {
+        self.thread
+            .name
+            .as_deref()
+            .filter(|name| !name.trim().is_empty())
+            .unwrap_or_else(|| if self.thread.preview.trim().is_empty() { &self.thread.id } else { &self.thread.preview })
+    }
+}

@@ -1,4 +1,4 @@
-use crate::{App, CodexSync, Server, ServerOpenError, SharedServer, ThreadStore, ThreadStoreOpenError};
+use crate::{App, CodexSync, Server, ServerOpenError, SharedServer};
 use axum::{Extension, Router, serve};
 use clap::Parser;
 use dioxus::cli_config::fullstack_address_or_localhost;
@@ -27,11 +27,16 @@ impl Command {
     pub async fn run(self) -> Result<ExitCode, CommandRunError> {
         use CommandRunError::*;
         let server = handle!(Server::open(self.config), OpenServerFailed);
-        let store = handle!(ThreadStore::open(&server), OpenThreadStoreFailed);
+        let store = server.threads.clone();
         let config = server.config.clone();
         let server: SharedServer = Arc::new(Mutex::new(server));
         let router = Router::new()
-            .serve_api_application(ServeConfig::new(), App)
+            .serve_api_application(
+                ServeConfig::new()
+                    .context(config.clone())
+                    .context(store.clone()),
+                App,
+            )
             .layer(Extension(server));
         let address = fullstack_address_or_localhost();
         let listener = handle!(TcpListener::bind(address).await, BindFailed, address);
@@ -69,8 +74,6 @@ impl Command {
 pub enum CommandRunError {
     #[error("failed to open CRS-Web server")]
     OpenServerFailed { source: ServerOpenError },
-    #[error("failed to open CRS-Web thread storage")]
-    OpenThreadStoreFailed { source: ThreadStoreOpenError },
     #[error("failed to listen at '{address}'")]
     BindFailed { source: io::Error, address: SocketAddr },
     #[error("Codex synchronization task failed")]

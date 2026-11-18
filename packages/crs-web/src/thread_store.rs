@@ -1,6 +1,6 @@
-use crate::{Config, ThreadHistory, ThreadRecord, ThreadSummary};
-use errgonomic::handle;
-use fjall::{Database, Keyspace, KeyspaceCreateOptions, PersistMode};
+use crate::{Config, ThreadHistory, ThreadPage, ThreadRecord, ThreadSummary};
+use errgonomic::{handle, handle_opt};
+use fjall::{Database, Keyspace, KeyspaceCreateOptions, PersistMode, Readable};
 use std::cmp::Reverse;
 use thiserror::Error;
 
@@ -43,21 +43,40 @@ impl ThreadStore {
         Ok(())
     }
 
-    pub fn list(db: &Database, config: &Config) -> Result<Vec<ThreadSummary>, ThreadStoreListError> {
+    pub fn read(&self, config: &Config, source: &str, id: &str) -> Result<Option<ThreadPage>, ThreadStoreReadError> {
+        use ThreadStoreReadError::*;
+        if !config.codex_app_servers.contains_key(source) {
+            return Ok(None);
+        }
+        let key = format!("{source}\0{id}");
+        let snapshot = self.db.snapshot();
+        let Some(bytes) = handle!(snapshot.get(&self.records, &key), GetRecordFailed) else {
+            return Ok(None);
+        };
+        let record: ThreadRecord = handle!(serde_json::from_slice(&bytes), DecodeRecordFailed);
+        if !config.includes_thread(record.thread.created_at) {
+            return Ok(None);
+        }
+        let bytes = handle_opt!(handle!(snapshot.get(&self.histories, &key), GetHistoryFailed), HistoryNotFound);
+        let history = handle!(serde_json::from_slice(&bytes), DecodeHistoryFailed);
+        Ok(Some(ThreadPage {
+            record,
+            history,
+        }))
+    }
+
+    pub fn list<'a>(&self, config: &Config, sources: impl IntoIterator<Item = &'a str>) -> Result<Vec<ThreadSummary>, ThreadStoreListError> {
         use ThreadStoreListError::*;
-        let store = handle!(Self::open(db), OpenFailed);
-        config
-            .codex_app_servers
-            .keys()
+        sources
+            .into_iter()
             .try_fold(Vec::new(), |mut threads, server_id| {
-                store
-                    .records
+                self.records
                     .prefix(format!("{server_id}\0"))
                     .try_for_each(|entry| {
-                        let (_, bytes) = handle!(entry.into_inner(), IntoInnerFailed, server_id: server_id.as_str());
-                        let record: ThreadRecord = handle!(serde_json::from_slice(&bytes), FromSliceFailed, server_id: server_id.as_str());
+                        let (_, bytes) = handle!(entry.into_inner(), IntoInnerFailed, server_id);
+                        let record: ThreadRecord = handle!(serde_json::from_slice(&bytes), FromSliceFailed, server_id);
                         if config.includes_thread(record.thread.created_at) {
-                            threads.push(ThreadSummary::from((server_id.as_str(), record)));
+                            threads.push(ThreadSummary::from((server_id, record)));
                         }
                         Ok(())
                     })
@@ -94,10 +113,22 @@ pub enum ThreadStoreWriteError {
 
 #[derive(Error, Debug)]
 pub enum ThreadStoreListError {
-    #[error("failed to open saved Codex threads")]
-    OpenFailed { source: ThreadStoreOpenError },
     #[error("failed to read a saved Codex thread from '{server_id}'")]
     IntoInnerFailed { source: fjall::Error, server_id: String },
     #[error("failed to decode a saved Codex thread from '{server_id}'")]
     FromSliceFailed { source: serde_json::Error, server_id: String },
+}
+
+#[derive(Error, Debug)]
+pub enum ThreadStoreReadError {
+    #[error("failed to read the saved thread record")]
+    GetRecordFailed { source: fjall::Error },
+    #[error("failed to decode the saved thread record")]
+    DecodeRecordFailed { source: serde_json::Error },
+    #[error("failed to read the saved thread history")]
+    GetHistoryFailed { source: fjall::Error },
+    #[error("saved thread record has no history")]
+    HistoryNotFound {},
+    #[error("failed to decode the saved thread history")]
+    DecodeHistoryFailed { source: serde_json::Error },
 }

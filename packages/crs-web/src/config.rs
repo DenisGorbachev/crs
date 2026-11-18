@@ -38,7 +38,7 @@ impl Config {
             config.db_path = dir.join(config.db_path);
             config.codex_app_servers.values_mut().for_each(|server| {
                 if let CodexAppServer::UnixSocket {
-                    socket_path,
+                    socket_path: Some(socket_path),
                 } = server
                 {
                     *socket_path = dir.join(&*socket_path);

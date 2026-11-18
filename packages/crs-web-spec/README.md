@@ -1,6 +1,6 @@
 # CRS-Web specification
 
-CRS-Web mirrors durable Codex thread history into Fjall. The read-only Dioxus 0.7 UI renders the thread list on the server.
+CRS-Web mirrors durable Codex thread history into Fjall and serves it through a read-only Dioxus UI.
 
 ## Configuration
 
@@ -34,7 +34,7 @@ A dedicated file keeps sync policy with source definitions. An environment varia
 - Page `thread/list` for both archive states, all providers, every supported source filter, all sections, all projects. Follow attachments from discoverable parents, including parents that precede the cutoff. Ordinary Codex listings can omit internal sources and empty threads.
 - Download history for eligible persisted threads. Store thread metadata, returned read state, all turn pages, and all item output. Fetch legacy items inside full turn pages. Fetch paginated items through `thread/items/list`.
 - Key snapshots by source ID and thread ID. Commit metadata and history together in Fjall. Keep the previous snapshot if a fetch fails. Retry on the next reconciliation. Continue syncing other threads and sources.
-- Exclude records outside the configured sources or cutoff from the list. Retain existing records on disk when the source stops returning them or the configuration changes.
+- Exclude records outside the configured sources or cutoff from all views. Retain existing records on disk when the source stops returning them or the configuration changes.
 
 ## Server state
 
@@ -44,8 +44,20 @@ Axum `State` suits typed custom routes. Dioxus context providers suit component 
 
 ## Run
 
+Run from the repository root to connect to a local Codex daemon.
+
 ```sh
-cargo run -p crs-web -- --config /path/to/crs-web.toml
+cargo run -p crs-web -- --config fixtures/crs-web/local.toml
 ```
 
-The default address is `127.0.0.1:8080`. Open `/` for the thread list or `/api/threads` for its JSON representation.
+Omitting `socket_path` selects the control socket under `CODEX_HOME`, which defaults to `~/.codex`. The default web address is `127.0.0.1:8080`.
+
+## Pages
+
+Dioxus `Router<Route>` renders pages and typed `Link` components generate URLs. [Dioxus routing guide](https://dioxuslabs.com/learn/0.7/essentials/router/).
+
+- `/` lists all configured Codex servers, including those with no synchronized threads.
+- `/servers/<source>` lists that server’s threads by most recent update.
+- `/servers/<source>/threads/<id>` displays the full synchronized history in turn and item order, including messages, command output and structured data.
+
+Unknown sources, missing threads and threads outside the cutoff return HTTP 404. `/api/threads` returns summaries across all configured servers.

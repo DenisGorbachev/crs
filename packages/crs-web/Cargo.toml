@@ -26,8 +26,9 @@ clap.workspace = true
 codex-app-server-client.workspace = true
 codex-app-server-protocol.workspace = true
 codex-utils-absolute-path.workspace = true
+codex-utils-home-dir.workspace = true
 derive_more.workspace = true
-dioxus.workspace = true
+dioxus = { workspace = true, features = ["router", "document"] }
 errgonomic.workspace = true
 fjall.workspace = true
 serde = { workspace = true, features = ["derive"] }

@@ -2289,6 +2289,7 @@ serde = "1.0.0"
 serde_json = "1.0.0"
 codex-app-server-client = { git = "https://github.com/openai/codex", tag = "rust-v0.169.0", version = "0.169.0" }
 codex-utils-absolute-path = { git = "https://github.com/openai/codex", tag = "rust-v0.169.0", version = "0.169.0" }
+codex-utils-home-dir = { git = "https://github.com/openai/codex", tag = "rust-v0.169.0", version = "0.169.0" }
 codex-tui = { git = "https://github.com/openai/codex", tag = "rust-v0.169.0", version = "0.169.0" }
 codex-app-server-protocol = { git = "https://github.com/openai/codex", tag = "rust-v0.169.0", version = "0.169.0" }
 interval-zoo = { git = "https://github.com/DenisGorbachev/interval-zoo" }
@@ -2417,8 +2418,9 @@ clap.workspace = true
 codex-app-server-client.workspace = true
 codex-app-server-protocol.workspace = true
 codex-utils-absolute-path.workspace = true
+codex-utils-home-dir.workspace = true
 derive_more.workspace = true
-dioxus.workspace = true
+dioxus = { workspace = true, features = ["router", "document"] }
 errgonomic.workspace = true
 fjall.workspace = true
 serde = { workspace = true, features = ["derive"] }
@@ -2515,6 +2517,14 @@ mod shared_server;
 pub use shared_server::*;
 mod thread_history;
 pub use thread_history::*;
+mod thread_page;
+pub use thread_page::*;
+mod route;
+pub use route::*;
+mod url_segment;
+pub use url_segment::*;
+mod server_page;
+pub use server_page::*;
 mod thread_record;
 pub use thread_record::*;
 mod thread_store;

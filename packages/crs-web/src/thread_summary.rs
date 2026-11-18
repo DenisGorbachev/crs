@@ -12,17 +12,13 @@ pub struct ThreadSummary {
 
 impl From<(&str, ThreadRecord)> for ThreadSummary {
     fn from((server_id, record): (&str, ThreadRecord)) -> Self {
-        let thread = record.thread;
-        let title = thread
-            .name
-            .filter(|name| !name.trim().is_empty())
-            .unwrap_or_else(|| if thread.preview.trim().is_empty() { thread.id.clone() } else { thread.preview });
+        let title = record.title().to_owned();
         Self {
-            id: thread.id,
+            id: record.thread.id,
             server_id: server_id.to_owned(),
             archived: record.archived,
             title,
-            updated_at: thread.updated_at,
+            updated_at: record.thread.updated_at,
         }
     }
 }
