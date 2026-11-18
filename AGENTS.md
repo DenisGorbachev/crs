@@ -2264,6 +2264,13 @@ absolute_paths = "deny"
 arithmetic_side_effects = "deny"
 
 [workspace.dependencies]
+derive_more = { version = "2.1.0", features = ["deref", "deref_mut"] }
+dioxus = { version = "0.7.0", default-features = false, features = ["fullstack", "macro", "html", "hooks", "signals", "logger", "cli-config"] }
+axum = "0.8.0"
+time = { version = "0.3.0", features = ["serde", "formatting", "parsing"] }
+toml = "0.9.0"
+tracing = "0.1.0"
+url = { version = "2.5.0", features = ["serde"] }
 clap = { version = "4.5.11", features = ["derive", "env"] }
 errgonomic = { git = "https://github.com/DenisGorbachev/errgonomic" }
 strum = { version = "0.28.0", features = ["derive"] }
@@ -2281,6 +2288,7 @@ codex-protocol = { git = "https://github.com/openai/codex", tag = "rust-v0.169.0
 serde = "1.0.0"
 serde_json = "1.0.0"
 codex-app-server-client = { git = "https://github.com/openai/codex", tag = "rust-v0.169.0", version = "0.169.0" }
+codex-utils-absolute-path = { git = "https://github.com/openai/codex", tag = "rust-v0.169.0", version = "0.169.0" }
 codex-tui = { git = "https://github.com/openai/codex", tag = "rust-v0.169.0", version = "0.169.0" }
 codex-app-server-protocol = { git = "https://github.com/openai/codex", tag = "rust-v0.169.0", version = "0.169.0" }
 interval-zoo = { git = "https://github.com/DenisGorbachev/interval-zoo" }
@@ -2393,6 +2401,35 @@ exclude.workspace = true
 
 [lints]
 workspace = true
+
+[[bin]]
+name = "crs-web"
+path = "src/main.rs"
+required-features = ["server"]
+
+[features]
+default = ["server"]
+server = ["dioxus/server"]
+
+[dependencies]
+axum.workspace = true
+clap.workspace = true
+codex-app-server-client.workspace = true
+codex-app-server-protocol.workspace = true
+codex-utils-absolute-path.workspace = true
+derive_more.workspace = true
+dioxus.workspace = true
+errgonomic.workspace = true
+fjall.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+thiserror.workspace = true
+time.workspace = true
+tokio = { workspace = true, features = ["signal", "sync", "time"] }
+toml.workspace = true
+tracing.workspace = true
+url.workspace = true
+uuid = { workspace = true, features = ["v4"] }
 ```
 
 ### packages/crs-cli-spec/src/lib.rs
@@ -2450,11 +2487,54 @@ fn verify_cli() {
 ### packages/crs-web-spec/src/lib.rs
 
 ```rust
-
+#![doc = include_str!("../README.md")]
 ```
 
 ### packages/crs-web/src/lib.rs
 
 ```rust
+#![cfg(feature = "server")]
 
+mod app;
+pub use app::*;
+mod codex_app_server;
+pub use codex_app_server::*;
+mod codex_connection;
+pub use codex_connection::*;
+mod codex_sync;
+pub use codex_sync::*;
+mod command;
+pub use command::*;
+mod config;
+pub use config::*;
+mod functions;
+pub use functions::*;
+mod server;
+pub use server::*;
+mod shared_server;
+pub use shared_server::*;
+mod thread_history;
+pub use thread_history::*;
+mod thread_record;
+pub use thread_record::*;
+mod thread_store;
+pub use thread_store::*;
+mod thread_summary;
+pub use thread_summary::*;
+```
+
+### packages/crs-web/src/main.rs
+
+```rust
+use clap::Parser;
+use crs_web::Command;
+use dioxus::logger::initialize_default;
+use errgonomic::exit_result;
+use std::process::ExitCode;
+
+#[tokio::main]
+async fn main() -> ExitCode {
+    initialize_default();
+    exit_result(Command::parse().run().await)
+}
 ```
