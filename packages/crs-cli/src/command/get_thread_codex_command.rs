@@ -36,6 +36,6 @@ impl GetThreadCodexCommand {
 
 #[derive(Error, Debug)]
 pub enum GetThreadCodexCommandRunError {
-    #[error("failed to render an agent message from Codex thread '{thread_id}'")]
+    #[error("failed to render agent messages from Codex thread '{thread_id}'")]
     RenderAgentMessageGetThreadCodexCommandRunFailed { source: RenderAgentMessageGetThreadCodexCommandRunError, thread_id: CodexThreadId },
 }
