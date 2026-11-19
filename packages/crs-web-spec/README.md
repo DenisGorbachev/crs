@@ -64,6 +64,8 @@ Dioxus `Router<Route>` renders pages and typed links generate URLs. [Dioxus rout
 - `/servers/<source>` lists top-level threads by most recent update. Exclude attached children and subagents, including subagents without a recorded parent ID. A standalone fork remains eligible. Show the app-server working directory below each thread name. Each link targets `#turn-<id>` for the chronologically last turn, including an ongoing, failed or interrupted turn. A thread with no turns opens without a fragment.
 - `/servers/<source>/threads/<id>` displays synchronized turns and items in order, omitting reasoning items. Each turn has a stable HTML ID.
 
+Place “Open in Codex” first in the thread toolbar. Use an external-link icon and a native link to `codex://threads/<thread-id>` so it works with JavaScript disabled. The link contains no CRS source identifier.
+
 Right-align user messages in dark bubbles with white text. Left-align assistant messages. Give both accessible speaker names. Collapse every other visible item to one expandable line. A command shows its command line. A web search shows its query. Expansion reveals the full item and metadata. Use compact icon buttons with accessible names for navigation, quoting and submission.
 
 Visible thread tabs subscribe to Dioxus Server-Sent Events for their source and thread. On connection, reconnection and committed changes, fetch changed turns and thread metadata. Refresh open threads independently of backfill every `thread_refresh_interval_seconds` (default 3). During ongoing turns, display items and status changes as Codex makes them available in thread history. Update the transcript in place, preserve the draft and expanded commands, and follow new output when the reader is at the bottom.

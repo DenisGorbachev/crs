@@ -1,5 +1,7 @@
 # TODO
 
+- Increase sandbox memory.
+
 ## Working agreements
 
 - Record outstanding steering requests in this file. Remove each task when it is complete.

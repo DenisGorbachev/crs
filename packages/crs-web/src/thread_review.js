@@ -172,8 +172,8 @@ function navigation(root) {
         selected = message;
         selected?.setAttribute("aria-current", "true");
     }
-    controls.hidden = false;
-    const sync = arrowNavigation(controls, "button:not(:disabled)");
+    controls.querySelectorAll("button[hidden]").forEach(button => { button.hidden = false; });
+    const sync = arrowNavigation(controls, "a[href], button:not(:disabled)");
     controls.addEventListener("click", event => {
         const direction = event.target.closest("button")?.dataset.go;
         switch (direction) {

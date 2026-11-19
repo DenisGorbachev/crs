@@ -12,8 +12,8 @@ pub fn MessageForm(source: String, thread_id: Option<String>, #[props(default = 
         input { r#type: "hidden", name: "form_key", value: "{form_key}" }
         input { r#type: "hidden", name: "source", value: source }
         if let Some(id) = thread_id {
-            input { r#type: "hidden", name: "thread_id", value: id }
-            ThreadControls {}
+            input { r#type: "hidden", name: "thread_id", value: "{id}" }
+            ThreadControls { thread_id: id.clone() }
             p { id: "direct-input-notice", hidden: writable, "This thread does not accept direct messages." }
         }
         fieldset { disabled: !writable, hidden: !writable,
