@@ -2514,6 +2514,8 @@ mod app;
 pub use app::*;
 mod message_form;
 pub use message_form::*;
+mod new_thread_page;
+pub use new_thread_page::*;
 mod message_submission;
 pub use message_submission::*;
 mod codex_app_server;

@@ -62,9 +62,10 @@ Dioxus `Router<Route>` renders pages and typed links generate URLs. [Dioxus rout
 
 - `/` lists all configured Codex servers, including those with no synchronized threads.
 - `/servers/<source>` lists top-level threads by most recent update. Exclude attached children and subagents, including subagents without a recorded parent ID. A standalone fork remains eligible. Show the app-server working directory below each thread name. Each link targets `#turn-<id>` for the chronologically last turn, including an ongoing, failed or interrupted turn. A thread with no turns opens without a fragment.
+- `/servers/<source>/threads/new` opens from the server’s “New thread” link. Submitting the first message redirects to the new thread’s first turn.
 - `/servers/<source>/threads/<id>` displays synchronized turns and items in order, omitting reasoning items. Each turn has a stable HTML ID.
 
-Place “Open in Codex” first in the thread toolbar. Use an external-link icon and a native link to `codex://threads/<thread-id>` so it works with JavaScript disabled. The link contains no CRS source identifier.
+Place the controls below the message textarea with the submit button at the right edge. “Open in Codex” comes first in the thread toolbar. Use an external-link icon and a native link to `codex://threads/<thread-id>` so it works with JavaScript disabled. The link contains no CRS source identifier.
 
 Right-align user messages in dark bubbles with white text. Left-align assistant messages. Give both accessible speaker names. Collapse every other visible item to one expandable line. A command shows its command line. A web search shows its query. Expansion reveals the full item and metadata. Use compact icon buttons with accessible names for navigation, quoting and submission.
 
@@ -74,7 +75,7 @@ Unknown sources, missing threads and threads outside the cutoff return HTTP 404.
 
 ## Messages
 
-The server page accepts a first message for a new thread. The thread page accepts a follow-up when direct input is available. Both forms work with native HTML POST. Validate the form key before submitting to Codex. Generate it once per Fjall database and reuse it after restarts. To supply a dedicated random UUID instead, set `form_key_env` to the name of its environment variable. Preserve nonblank message text and reject whitespace-only input.
+Creation and follow-up forms support native HTML POST. Enable follow-ups when direct input is available. Validate the form key before submitting to Codex. Generate it once per Fjall database and reuse it after restarts. To supply a dedicated random UUID instead, set `form_key_env` to the name of its environment variable. Preserve nonblank message text and reject whitespace-only input.
 
 Start a new thread and its first turn with `thread/start` and `turn/start`. For a follow-up, resume the existing thread and call `thread/queue/add` with a fresh client message ID. Let Codex dispatch eligible idle threads and drain busy threads after their current turn.
 

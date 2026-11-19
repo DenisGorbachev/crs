@@ -34,8 +34,8 @@ export function threadQueue(root, refresh) {
         status.textContent = "The message left the queue. Your unsent edit is above the composer.";
         editor.addEventListener("submit", event => {
             event.preventDefault();
-            if (form.elements.message.readOnly || form.querySelector("fieldset").disabled) return;
             const draft = form.elements.message;
+            if (draft.readOnly || draft.disabled) return;
             draft.value += (draft.value ? "\n\n" : "") + values(editor).join("\n");
             draft.dispatchEvent(new Event("input", { bubbles: true }));
             editor.remove();
@@ -64,7 +64,7 @@ export function threadQueue(root, refresh) {
             if (previous.nextElementSibling !== row) previous.after(row);
             previous = row;
             const editor = row.querySelector("form");
-            const readOnly = form.querySelector("fieldset").disabled;
+            const readOnly = form.elements.message.disabled;
             const action = busy.get(id);
             const steering = !!item.turn_id || action === "steer";
             if (!editor.hidden && (steering || readOnly)) {

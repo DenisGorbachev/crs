@@ -11,17 +11,19 @@ pub fn MessageForm(source: String, thread_id: Option<String>, #[props(default = 
     rsx! { form { method: "post", action: "/messages", class: existing.then_some("thread-draft"),
         input { r#type: "hidden", name: "form_key", value: "{form_key}" }
         input { r#type: "hidden", name: "source", value: source }
-        if let Some(id) = thread_id {
+        if let Some(id) = thread_id.as_deref() {
             input { r#type: "hidden", name: "thread_id", value: "{id}" }
-            ThreadControls { thread_id: id.clone() }
             p { id: "direct-input-notice", hidden: writable, "This thread does not accept direct messages." }
         }
-        fieldset { disabled: !writable, hidden: !writable,
-            Textarea { aria_label: label, id: "message", name: "message", rows: "5", required: true }
-            div { class: "draft-actions",
-                Button { size: ButtonSize::IconSm, class: "rounded-full", r#type: "submit", title: submit, aria_label: submit, {icon("m6 12 6-6 6 6M12 6v13")} }
-                span { role: "status", "aria-live": "polite" }
+        Textarea { aria_label: label, id: "message", name: "message", rows: "5", required: true, disabled: !writable, hidden: !writable }
+        div { class: "controls flex items-center gap-2",
+            if let Some(id) = thread_id {
+                ThreadControls { thread_id: id }
             }
+            Button { size: ButtonSize::IconSm, class: "ms-auto shrink-0 rounded-full", r#type: "submit", title: submit, aria_label: submit, disabled: !writable, hidden: !writable, {icon("m6 12 6-6 6 6M12 6v13")} }
+        }
+        if existing {
+            span { class: "text-sm empty:sr-only", role: "status", "aria-live": "polite" }
         }
     } }
 }

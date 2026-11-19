@@ -1,4 +1,4 @@
-use crate::{Home, ServerPage, ThreadView, UrlSegment};
+use crate::{Home, NewThreadPage, ServerPage, ThreadView, UrlSegment};
 use dioxus::prelude::*;
 
 #[derive(Routable, Clone, Debug, PartialEq)]
@@ -7,6 +7,8 @@ pub enum Route {
     Home {},
     #[route("/servers/:source", ServerPage)]
     Server { source: UrlSegment },
+    #[route("/servers/:source/threads/new", NewThreadPage)]
+    NewThread { source: UrlSegment },
     #[route("/servers/:source/threads/:id#:anchor", ThreadView)]
     Thread { source: UrlSegment, id: UrlSegment, anchor: String },
 }

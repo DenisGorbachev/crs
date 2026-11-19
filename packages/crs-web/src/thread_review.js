@@ -166,7 +166,7 @@ function arrowNavigation(container, selector) {
 }
 
 function navigation(root) {
-    const controls = root.querySelector(".controls");
+    const controls = root.querySelector('.thread-draft [role="toolbar"]');
     let selected;
     let lastScroll;
     function select(message) {
@@ -301,7 +301,6 @@ function atTranscriptBottom() {
 function composer(root, form, syncControls, queue) {
     const editor = form.elements.message;
     const quoteButton = form.querySelector("#quote-mode");
-    const fieldset = form.querySelector("fieldset");
     const status = form.querySelector('[role="status"]');
     const send = form.querySelector('[type="submit"]');
     const draft = threadDraft(form, editor, status);
@@ -310,15 +309,17 @@ function composer(root, form, syncControls, queue) {
         if (!form.contains(event.relatedTarget)) form.classList.remove("editing");
     });
     function quoting() {
-        return !fieldset.disabled && quoteButton.ariaPressed === "true";
+        return !editor.disabled && quoteButton.ariaPressed === "true";
     }
     function syncQuotes(scope) {
         prepareQuotes(scope, quoting());
     }
     syncQuotes(root);
     function setWritable(writable) {
-        if (writable === fieldset.disabled) {
-            fieldset.hidden = fieldset.disabled = !writable;
+        if (writable === editor.disabled) {
+            editor.hidden = editor.disabled = !writable;
+            send.hidden = !writable;
+            send.disabled = !writable || editor.readOnly;
             root.querySelector("#direct-input-notice").hidden = writable;
             syncControls();
             syncQuotes(root);
@@ -350,7 +351,7 @@ function composer(root, form, syncControls, queue) {
     });
     form.addEventListener("submit", async event => {
         event.preventDefault();
-        if (send.disabled || fieldset.disabled) return;
+        if (send.disabled) return;
         const submitted = editor.value;
         const body = new URLSearchParams(new FormData(form));
         send.disabled = true;
@@ -371,7 +372,7 @@ function composer(root, form, syncControls, queue) {
         } catch {
             status.textContent = "Could not confirm delivery. Check the thread before sending again.";
         } finally {
-            send.disabled = false;
+            send.disabled = editor.disabled;
             editor.readOnly = false;
         }
     });

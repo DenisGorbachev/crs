@@ -5,7 +5,7 @@ use dioxus_primitives::toolbar::{Toolbar, ToolbarButton};
 
 #[component]
 pub fn ThreadControls(thread_id: String) -> Element {
-    rsx! { Toolbar { class: "controls", aria_label: "Thread controls",
+    rsx! { Toolbar { class: "flex min-w-0 flex-wrap items-center gap-1", aria_label: "Thread controls",
         a { class: "icon-button", href: "codex://threads/{thread_id}", aria_label: "Open in Codex", title: "Open in Codex",
             {icon("M15 3h6v6m0-6L10 14M10 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5")}
         }

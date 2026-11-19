@@ -1,4 +1,4 @@
-use crate::{Config, Disclosure, Item, ItemContent, ItemDescription, ItemGroup, ItemSize, ItemTitle, MessageForm, PageNav, Route, ThreadStore, UrlSegment, page_error};
+use crate::{Config, Item, ItemContent, ItemDescription, ItemGroup, ItemSize, ItemTitle, PageNav, Route, ThreadStore, UrlSegment, page_error};
 use dioxus::prelude::*;
 use errgonomic::ErrorDisplayer;
 use std::iter::once;
@@ -39,7 +39,7 @@ pub fn ServerPage(source: ReadSignal<UrlSegment>) -> Element {
         match &*data {
             Ok(threads) => rsx! {
                 h1 { "{source().value}" }
-                Disclosure { label: rsx! { "New thread" }, MessageForm { source: source().value } }
+                Link { to: Route::NewThread { source: source() }, "New thread" }
                 if threads.is_empty() { p { "No synchronized threads yet." } }
                 ItemGroup {
                     for thread in threads {
