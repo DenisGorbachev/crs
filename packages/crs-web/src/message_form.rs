@@ -1,4 +1,4 @@
-use crate::{Route, UrlSegment};
+use crate::{Route, UrlSegment, icon};
 use dioxus::prelude::*;
 use uuid::Uuid;
 
@@ -14,15 +14,17 @@ pub fn MessageForm(source: String, thread_id: Option<String>) -> Element {
         if let Some(id) = thread_id {
             input { r#type: "hidden", name: "thread_id", value: id }
             div { class: "quote-controls", hidden: true,
-                button { r#type: "button", id: "quote-mode", aria_pressed: "false", aria_describedby: "quote-hint", "Quote" }
-                small { id: "quote-hint", "Tap once for one quote, twice for multiple." }
+                button { class: "icon-button", r#type: "button", id: "quote-mode", title: "Quote", aria_label: "Quote", aria_pressed: "false", aria_describedby: "quote-hint",
+                    {icon("M10 6H4v6h5c0 3-2 5-5 6m16-12h-6v6h5c0 3-2 5-5 6")}
+                }
+                small { id: "quote-hint" }
                 label { input { r#type: "checkbox", id: "quote-default" } " Quote by default" }
             }
         }
         label { r#for: "message", "{label}" }
         textarea { id: "message", name: "message", rows: "5", required: true }
         div { class: "draft-actions",
-            button { r#type: "submit", "{submit}" }
+            button { class: "icon-button primary", r#type: "submit", title: submit, aria_label: submit, {icon("m6 12 6-6 6 6M12 6v13")} }
             span { role: "status", "aria-live": "polite" }
         }
     } }

@@ -1,5 +1,5 @@
-use crate::{Config, MessageForm, Route, ThreadHistory, ThreadRecord, ThreadStore, UrlSegment, page_error, thread_item_view, turn_anchor};
-use codex_app_server_protocol::ThreadItem;
+use crate::{Config, MessageForm, Route, ThreadHistory, ThreadRecord, ThreadStore, UrlSegment, icon, page_error, thread_item_view, turn_anchor};
+use codex_app_server_protocol::{ThreadItem, ThreadItemPayload};
 use dioxus::prelude::*;
 use errgonomic::{ErrorDisplayer, handle};
 use std::collections::HashMap;
@@ -18,7 +18,7 @@ impl ThreadPage {
     pub fn render(self, source: &str) -> Result<Element, ThreadPageRenderError> {
         use ThreadPageRenderError::*;
         let Self {
-            record,
+            mut record,
             history,
         } = self;
         let mut entries = HashMap::<_, Vec<_>>::new();
@@ -33,7 +33,8 @@ impl ThreadPage {
         for (number, mut turn) in (1usize..).zip(history.turns) {
             let items = take(&mut turn.items)
                 .into_iter()
-                .chain(entries.remove(&turn.id).into_iter().flatten());
+                .chain(entries.remove(&turn.id).into_iter().flatten())
+                .filter(|item| !matches!(item.payload, ThreadItemPayload::Reasoning { .. }));
             let mut transcript = Vec::new();
             for item in items {
                 transcript.push(thread_item_view(handle!(serde_json::to_value(item), EncodeItemFailed)));
@@ -47,11 +48,12 @@ impl ThreadPage {
                     h2 { "Turn {number}" }
                     if let Some(error) = &turn.error { p { role: "alert", "{error.message}" } }
                     details { summary { "Turn details · {turn.status:?}" } pre { "{metadata:#}" } }
-                    if transcript.is_empty() { p { "No items in this turn." } }
+                    if transcript.is_empty() { p { "No visible items in this turn." } }
                     {transcript.into_iter()}
                 }
             });
         }
+        record.thread.turns.clear();
         let metadata = handle!(serde_json::to_string_pretty(&record), EncodeRecordFailed);
         let title = record.title();
         Ok(rsx! {
@@ -110,11 +112,15 @@ pub fn ThreadView(source: ReadSignal<UrlSegment>, id: ReadSignal<UrlSegment>, an
             " / "
             Link { to: Route::Server { source: source() }, "{source().value}" }
         }
-        if *status == StatusCode::OK { nav { class: "response-nav", aria_label: "Message navigation", hidden: true,
-            button { r#type: "button", "data-go": "first", "Beginning" }
-            button { r#type: "button", "data-go": "previous", aria_label: "Previous message", "Previous" }
-            button { r#type: "button", "data-go": "next", aria_label: "Next message", "Next" }
-            button { r#type: "button", "data-go": "last", "End" }
+        if *status == StatusCode::OK { nav { class: "response-nav sticky top-0 z-10 flex gap-1 py-1", aria_label: "Message navigation", hidden: true,
+            for (action, label, path) in [
+                ("first", "Beginning", "M5 4h14M6 14l6-6 6 6M12 8v12"),
+                ("previous", "Previous message", "m6 15 6-6 6 6"),
+                ("next", "Next message", "m6 9 6 6 6-6"),
+                ("last", "End", "M5 20h14M6 10l6 6 6-6M12 16V4"),
+            ] {
+                button { class: "icon-button", r#type: "button", "data-go": action, aria_label: label, title: label, {icon(path)} }
+            }
         } }
         {content.clone()}
         if *status == StatusCode::OK { script { r#type: "module", src: "/thread-review.js" } }

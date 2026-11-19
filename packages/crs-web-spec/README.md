@@ -52,13 +52,17 @@ cargo run -p crs-web -- --config fixtures/crs-web/local.toml
 
 Omitting `socket_path` selects the control socket under `CODEX_HOME`, which defaults to `~/.codex`. The default web address is `127.0.0.1:8080`.
 
+`dx build --server --fullstack=false -p crs-web` compiles the package’s `tailwind.css` to `assets/tailwind.css`. Plain `cargo run` embeds the checked-in output. [Dioxus Tailwind integration](https://dioxuslabs.com/learn/0.7/essentials/ui/styling/).
+
 ## Pages
 
 Dioxus `Router<Route>` renders pages and typed `Link` components generate URLs. [Dioxus routing guide](https://dioxuslabs.com/learn/0.7/essentials/router/).
 
 - `/` lists all configured Codex servers, including those with no synchronized threads.
 - `/servers/<source>` lists top-level threads by most recent update. Exclude attached children and subagents, including subagents without a recorded parent ID. A standalone fork remains eligible. Each link targets `#turn-<id>` for the chronologically last turn, including an ongoing, failed or interrupted turn. A thread with no turns opens without a fragment.
-- `/servers/<source>/threads/<id>` displays the full synchronized history in turn and item order, including messages, command output and structured data. Each turn has a stable HTML ID.
+- `/servers/<source>/threads/<id>` displays synchronized turns and items in order, omitting reasoning items. Each turn has a stable HTML ID.
+
+Right-align user messages in dark bubbles with white text. Left-align assistant messages. Give both accessible speaker names. Each command expands from a single line to its full text, output and metadata. Use compact icon buttons with accessible names for navigation, quoting and submission.
 
 Unknown sources, missing threads and threads outside the cutoff return HTTP 404. `/api/threads` returns summaries across all configured servers.
 
@@ -70,7 +74,7 @@ Use `thread/start` for a new thread or `thread/resume` with `excludeTurns` for a
 
 ## Quoting thread messages
 
-Keep one editable draft at the bottom of the thread. Append quotations without opening the keyboard. Save by source and thread in the browser until Codex acknowledges Send. Preserve conflicting edits in their respective tabs. The top bar jumps to either end or to the previous or next user or assistant response.
+Keep one editable draft at the bottom of the thread. After appending a quotation, focus the textarea with the caret at the end. Save by source and thread in the browser until Codex acknowledges Send. Preserve conflicting edits in their respective tabs. The top bar jumps to either end or to the previous or next user or assistant response.
 
 Tap **Quote** once to quote one chunk, twice quickly to keep quoting. Tap the active button to cancel. **Quote by default** opens threads in persistent selection mode. Links follow their destinations when selection is off.
 

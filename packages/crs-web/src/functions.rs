@@ -6,3 +6,5 @@ mod markdown_view;
 pub use markdown_view::*;
 mod code_ranges;
 pub use code_ranges::*;
+mod icon;
+pub use icon::*;

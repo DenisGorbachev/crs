@@ -242,6 +242,7 @@ function threadDraft(form, editor, status) {
 function composer(root, form) {
     const editor = form.elements.message;
     const modeButton = form.querySelector("#quote-mode");
+    const hint = form.querySelector("#quote-hint");
     const preference = form.querySelector("#quote-default");
     const status = form.querySelector('[role="status"]');
     const send = form.querySelector('[type="submit"]');
@@ -260,7 +261,10 @@ function composer(root, form) {
     function setMode(next) {
         mode = next;
         root.dataset.quoteMode = mode;
-        modeButton.textContent = { off: "Quote", once: "Quote once", persistent: "Quote multiple" }[mode];
+        const label = { off: "Quote", once: "Quote once", persistent: "Quote multiple" }[mode];
+        modeButton.setAttribute("aria-label", label);
+        modeButton.title = label;
+        hint.textContent = { off: "Tap once for one quote, twice for multiple.", once: "Select a passage to quote.", persistent: "Select passages to quote." }[mode];
         modeButton.setAttribute("aria-pressed", String(mode !== "off"));
         if (mode !== "off" && !prepared) {
             for (const body of root.querySelectorAll(".markdown")) prepareProse(body);
@@ -296,9 +300,11 @@ function composer(root, form) {
         const text = editor.value;
         const separator = !text || text.endsWith("\n\n") ? "" : text.endsWith("\n") ? "\n" : "\n\n";
         editor.value = text + separator + formatQuote(part ? quotations.get(part) : link.href) + "\n\n";
-        editor.scrollTop = editor.scrollHeight;
         if (draft.save()) status.textContent = "Quote added.";
         if (mode === "once") setMode("off");
+        editor.focus({ preventScroll: true });
+        editor.setSelectionRange(editor.value.length, editor.value.length);
+        editor.scrollTop = editor.scrollHeight;
     }
     root.addEventListener("click", insert);
     root.addEventListener("keydown", event => {

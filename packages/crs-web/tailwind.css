@@ -1,8 +1,12 @@
+@layer theme, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+@source "./src/**/*.rs";
+
 :root { color-scheme: light dark; font: 100%/1.5 "Source Sans 3", system-ui, sans-serif; }
 main { max-width: 72ch; margin: 2rem auto; padding: 0 1rem 4rem; overflow-wrap: anywhere; }
 h1, h2, h3 { line-height: 1.2; }
 section { margin-top: 2.5rem; }
-article { border-inline-start: 2px solid GrayText; margin-block: 1.25rem; padding-inline-start: 1rem; }
 pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 article img, article audio { display: block; max-width: 100%; }
 summary { cursor: pointer; }
@@ -10,17 +14,29 @@ dt { font-weight: 600; }
 dd, ol { margin: 0 0 .5rem; padding-inline-start: 1rem; }
 form { display: grid; gap: .5rem; margin-block: 1.5rem; }
 textarea { box-sizing: border-box; width: 100%; resize: vertical; padding: .5rem; font: inherit; }
-button { justify-self: start; padding: .4rem .9rem; font: inherit; cursor: pointer; }
+.icon-button {
+    @apply inline-flex size-8 shrink-0 cursor-pointer touch-manipulation items-center justify-center justify-self-start rounded-full border-0 p-0;
+    background: transparent; color: inherit;
+}
+.icon-button:hover { background: color-mix(in srgb, CanvasText 9%, Canvas); }
+.icon-button.primary, .icon-button[aria-pressed="true"] { color: Canvas; background: CanvasText; }
+.icon-button:disabled { opacity: .55; }
 [hidden] { display: none !important; }
 #thread-review { --nav-height: 3.25rem; --draft-height: 0px; padding-bottom: calc(2rem + var(--draft-height)); }
 #thread-review :is(section, article[data-response]) { scroll-margin-top: calc(var(--nav-height) + 8px); }
-article[aria-current="true"] { border-inline-start-color: Highlight; }
-.response-nav {
-    position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: .25rem;
-    background: Canvas; border-bottom: 1px solid GrayText; padding: .25rem 0;
+article[aria-current="true"] { position: relative; }
+article[aria-current="true"]::before {
+    content: ""; background: Highlight;
+    @apply absolute -start-3 top-2 size-1.5 rounded-full;
 }
-.response-nav button, .quote-controls button { touch-action: manipulation; min-height: 2.75rem; }
-.response-nav button { flex: 1; padding-inline: .25rem; }
+.response-nav { background: Canvas; border-bottom: 1px solid color-mix(in srgb, CanvasText 18%, Canvas); }
+.item-details > summary, .command-item > summary { color: color-mix(in srgb, CanvasText 70%, Canvas); }
+[data-response="User"] { @apply ms-auto w-fit max-w-[85%]; }
+[data-response="User"] > .item-details > summary { text-align: end; }
+.user-bubble a { color: #bddeff; }
+.user-bubble .markdown + .markdown { margin-block-start: .75rem; }
+.markdown > :first-child { margin-block-start: 0; }
+.markdown > :last-child { margin-block-end: 0; }
 .markdown { overflow-x: auto; }
 .markdown table { border-collapse: collapse; }
 .markdown th, .markdown td { padding: .35rem .6rem; border: 1px solid GrayText; }
@@ -29,13 +45,12 @@ article[aria-current="true"] { border-inline-start-color: Highlight; }
 #thread-review:is([data-quote-mode="once"], [data-quote-mode="persistent"]) .quote-chunk { cursor: pointer; }
 #thread-review:is([data-quote-mode="once"], [data-quote-mode="persistent"]) .quote-chunk:is(:hover, :focus-visible) { background: Highlight; color: HighlightText; }
 .has-draft .thread-draft {
-    position: fixed; z-index: 2; bottom: 0; inset-inline: 0; box-sizing: border-box; max-width: 76ch;
+    position: fixed; z-index: 20; bottom: 0; inset-inline: 0; box-sizing: border-box; max-width: 76ch;
     margin: 0 auto; background: Canvas; border-top: 1px solid GrayText; padding: .4rem 1rem max(.4rem, env(safe-area-inset-bottom));
     max-height: 45dvh; overflow: auto; gap: .25rem;
 }
 .quote-controls, .draft-actions { display: flex; align-items: center; flex-wrap: wrap; gap: .25rem .75rem; }
 .quote-controls label { margin-inline-start: auto; }
-.quote-controls button[aria-pressed="true"] { color: HighlightText; background: Highlight; }
 .has-draft textarea { height: 3rem; min-height: 2rem; max-height: 18dvh; resize: none; }
 .has-draft textarea:focus { height: 8rem; }
 .draft-actions [role="status"] { flex: 1; font-size: .875rem; }

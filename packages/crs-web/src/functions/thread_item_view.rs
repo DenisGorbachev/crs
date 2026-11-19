@@ -30,7 +30,7 @@ pub fn thread_item_view(mut item: Value) -> Element {
                     structured_value(input)
                 }
             });
-            ("User", rsx! { {inputs} })
+            ("User", rsx! { div { class: "user-bubble ms-auto box-border w-fit max-w-full rounded-3xl bg-neutral-800 px-4 py-2.5 text-white scheme-dark", {inputs} } })
         }
         Some(kind @ ("agentMessage" | "plan")) => {
             let text = fields.remove("text").unwrap_or_default();
@@ -39,7 +39,14 @@ pub fn thread_item_view(mut item: Value) -> Element {
         Some("commandExecution") => {
             let command = fields.remove("command").unwrap_or_default();
             let output = fields.remove("aggregatedOutput").unwrap_or_default();
-            ("Command", rsx! { pre { span { {command.as_str()} } } if let Some(output) = output.as_str() { pre { span { "{output}" } } } })
+            let command = command.as_str().unwrap_or_default();
+            let preview = command.trim_start().lines().next().unwrap_or("Command");
+            return rsx! { details { class: "command-item my-3",
+                summary { class: "list-inside truncate text-sm", code { "{preview}" } }
+                pre { code { "{command}" } }
+                if let Some(output) = output.as_str() { pre { "{output}" } }
+                {item_details(&item)}
+            } };
         }
         kind => {
             let mut payload = take(fields);
@@ -51,11 +58,16 @@ pub fn thread_item_view(mut item: Value) -> Element {
             (kind.unwrap_or("Item"), structured_value(&Value::Object(payload)))
         }
     };
-    rsx! { article { "data-response": matches!(kind.as_str(), Some("userMessage" | "agentMessage")).then_some(""),
-        h3 { "{heading}" }
+    let speaker = matches!(kind.as_str(), Some("userMessage" | "agentMessage")).then_some(heading);
+    rsx! { article { class: "my-5", "data-response": speaker, aria_label: speaker,
+        if speaker.is_none() { h3 { "{heading}" } }
         {body}
-        details { summary { "Item details" } pre { "{item:#}" } }
+        {item_details(&item)}
     } }
+}
+
+fn item_details(item: &Value) -> Element {
+    rsx! { details { class: "item-details mt-1 text-xs", summary { "Item details" } pre { "{item:#}" } } }
 }
 
 fn structured_value(value: &Value) -> Element {

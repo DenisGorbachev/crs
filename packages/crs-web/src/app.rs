@@ -12,7 +12,7 @@ use tracing::error;
 pub fn App() -> Element {
     rsx! {
         document::Meta { name: "viewport", content: "width=device-width, initial-scale=1, interactive-widget=resizes-content" }
-        document::Style { {include_str!("thread_page.css")} }
+        document::Style { {include_str!("../assets/tailwind.css")} }
         ErrorBoundary {
             handle_error: |context: ErrorContext| {
                 let missing = context.error().is_some_and(|e| e.downcast_ref::<ParseRouteError>().is_some());
