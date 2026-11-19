@@ -4,7 +4,7 @@ CRS-Web is a single-user application. It mirrors durable Codex thread history in
 
 ## Configuration
 
-Load a CRS-Web TOML file at startup via `--config` or `CRS_WEB_CONFIG`. Resolve relative database and Unix socket paths against the file’s directory. Each source has a stable, unique ID. Changing the list takes effect on restart.
+Load `~/.config/crs/web.toml` at startup unless `--config <PATH>` selects another file. Resolve relative database and Unix socket paths against the file’s directory. Each source has a stable, unique ID. Changing the list takes effect on restart.
 
 ```toml
 threads_created_since = "2026-10-01T00:00:00Z"
@@ -25,7 +25,7 @@ Omit `threads_created_since` to import the full history across all working direc
 
 `min_thread_created_at` makes the comparison explicit. `thread_history_start_at` can also refer to the first imported turn within a thread. `threads_created_since` identifies which timestamp controls thread eligibility.
 
-A dedicated file keeps sync policy with source definitions. An environment variable suits a single-value deployment override. Dioxus or Axum configuration suits framework settings. Axios configuration suits browser HTTP transport.
+A dedicated file keeps sync policy with source definitions. Dioxus or Axum configuration suits framework settings. Axios configuration suits browser HTTP transport.
 
 ## Synchronization
 
@@ -44,7 +44,7 @@ Axum `State` suits typed custom routes. Dioxus context providers suit component 
 
 ## Run
 
-Run from the repository root to connect to a local Codex daemon.
+Start CRS-Web with `cargo run -p crs-web`. To use the repository’s local Codex fixture, pass its config explicitly.
 
 ```sh
 cargo run -p crs-web -- --config fixtures/crs-web/local.toml

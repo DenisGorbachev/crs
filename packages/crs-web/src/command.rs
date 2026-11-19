@@ -1,4 +1,4 @@
-use crate::{App, MAX_RECORDING_BYTES, Server, ServerOpenError, SharedServer, open_file, submit_message, thread_events, thread_updates, transcribe};
+use crate::{App, LoadConfigError, MAX_RECORDING_BYTES, Server, ServerOpenError, SharedServer, load_config, open_file, submit_message, thread_events, thread_updates, transcribe};
 use axum::extract::DefaultBodyLimit;
 use axum::http::header::CONTENT_TYPE;
 use axum::routing::{get, post};
@@ -24,8 +24,8 @@ use tracing::{info, warn};
 #[derive(Parser)]
 #[command(author, version, about, propagate_version = true, flatten_help = true, disable_help_subcommand = true)]
 pub struct Command {
-    #[arg(long, env = "CRS_WEB_CONFIG")]
-    config: PathBuf,
+    #[arg(long, value_name = "PATH", help = "Config file (defaults to ~/.config/crs/web.toml)")]
+    config: Option<PathBuf>,
     #[arg(long, env = "OPENAI_API_KEY", hide_env_values = true)]
     openai_api_key: Option<SecretString>,
 }
@@ -33,7 +33,8 @@ pub struct Command {
 impl Command {
     pub async fn run(self) -> Result<ExitCode, CommandRunError> {
         use CommandRunError::*;
-        let server = handle!(Server::open(self.config), OpenServerFailed);
+        let config = handle!(load_config(self.config), LoadConfigFailed);
+        let server = handle!(Server::open(config), OpenServerFailed);
         let store = server.threads.clone();
         let config = server.config.clone();
         let sources: Vec<_> = server.sources.values().cloned().collect();
@@ -90,6 +91,8 @@ impl Command {
 
 #[derive(Error, Debug)]
 pub enum CommandRunError {
+    #[error("failed to load CRS-Web configuration")]
+    LoadConfigFailed { source: LoadConfigError },
     #[error("failed to open CRS-Web server")]
     OpenServerFailed { source: ServerOpenError },
     #[error("failed to listen at '{address}'")]
