@@ -43,20 +43,17 @@ form fieldset { min-width: 0; display: grid; gap: .25rem; padding: 0; margin: 0;
 .markdown th, .markdown td { padding: .35rem .6rem; border: 1px solid GrayText; }
 .markdown blockquote { border-inline-start: 2px solid GrayText; margin-inline: .5rem; padding-inline: .75rem; }
 .markdown pre { white-space: pre; overflow: auto; padding: .75rem; background: color-mix(in srgb, CanvasText 6%, Canvas); }
-#thread-review:is([data-quote-mode="once"], [data-quote-mode="persistent"]) .quote-chunk:focus-visible { background: Highlight; color: HighlightText; }
+.quote-chunk[role="button"]:focus-visible { background: Highlight; color: HighlightText; }
 .has-draft .thread-draft {
     position: fixed; z-index: 20; bottom: 0; inset-inline: 0; box-sizing: border-box; max-width: 76ch;
     margin: 0 auto; background: Canvas; border-top: 1px solid GrayText; padding: .4rem 1rem max(.4rem, env(safe-area-inset-bottom));
     max-height: 45dvh; overflow: auto; gap: .25rem;
 }
 .controls, .draft-actions { display: flex; align-items: center; flex-wrap: wrap; gap: .25rem .75rem; }
-.controls label { margin-inline-start: auto; }
 .has-draft textarea { height: 3rem; min-height: 2rem; max-height: 18dvh; resize: none; }
 .has-draft .thread-draft.editing textarea { height: 8rem; }
 .draft-actions [role="status"] { flex: 1; font-size: .875rem; }
 @media (max-width: 36rem) {
     main { margin-top: .5rem; }
     .has-draft .thread-draft { padding-inline: .6rem; }
-    .controls { font-size: .875rem; }
-    .controls small { max-width: 14ch; }
 }

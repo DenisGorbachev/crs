@@ -1,5 +1,8 @@
 # TODO
 
+- List parent threads from every working directory on each Codex server page.
+- Display the app-server working directory below each thread name.
+
 ## Working agreements
 
 - Record outstanding steering requests in this file. Remove each task when it is complete.

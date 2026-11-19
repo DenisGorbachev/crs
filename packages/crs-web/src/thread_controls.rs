@@ -14,10 +14,8 @@ pub fn ThreadControls() -> Element {
                 button { class: "icon-button", r#type: "button", "data-go": action, aria_label: label, title: label, {icon(path)} }
             }
         }
-        button { class: "icon-button", r#type: "button", id: "quote-mode", aria_label: "Quote", aria_pressed: "false", aria_describedby: "quote-hint",
+        button { class: "icon-button", r#type: "button", id: "quote-mode", aria_label: "Quote", aria_pressed: "true",
             {icon("M10 6H4v6h5c0 3-2 5-5 6m16-12h-6v6h5c0 3-2 5-5 6")}
         }
-        small { id: "quote-hint" }
-        label { input { r#type: "checkbox", id: "quote-default" } " Quote by default" }
     } }
 }

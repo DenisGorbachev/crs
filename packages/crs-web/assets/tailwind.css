@@ -243,7 +243,7 @@ form fieldset {
   padding: .75rem;
   background: color-mix(in srgb, CanvasText 6%, Canvas);
 }
-#thread-review:is([data-quote-mode="once"], [data-quote-mode="persistent"]) .quote-chunk:focus-visible {
+.quote-chunk[role="button"]:focus-visible {
   background: Highlight;
   color: HighlightText;
 }
@@ -268,9 +268,6 @@ form fieldset {
   flex-wrap: wrap;
   gap: .25rem .75rem;
 }
-.controls label {
-  margin-inline-start: auto;
-}
 .has-draft textarea {
   height: 3rem;
   min-height: 2rem;
@@ -290,12 +287,6 @@ form fieldset {
   }
   .has-draft .thread-draft {
     padding-inline: .6rem;
-  }
-  .controls {
-    font-size: .875rem;
-  }
-  .controls small {
-    max-width: 14ch;
   }
 }
 @property --tw-border-style {

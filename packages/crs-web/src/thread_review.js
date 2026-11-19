@@ -244,8 +244,8 @@ function threadDraft(form, editor, status) {
 
 const prepared = new WeakSet();
 
-function prepareQuotes(scope, mode) {
-    if (mode !== "off") {
+function prepareQuotes(scope, enabled) {
+    if (enabled) {
         for (const body of scope.querySelectorAll(".markdown")) {
             if (prepared.has(body)) continue;
             prepareProse(body);
@@ -254,7 +254,7 @@ function prepareQuotes(scope, mode) {
         }
     }
     for (const part of scope.querySelectorAll("[data-quote-start]")) {
-        if (mode === "off") {
+        if (!enabled) {
             part.removeAttribute("tabindex");
             part.removeAttribute("role");
         } else if (!part.closest("a")) {
@@ -270,9 +270,8 @@ function atTranscriptBottom() {
 
 function composer(root, form) {
     const editor = form.elements.message;
-    const modeButton = form.querySelector("#quote-mode");
-    const hint = form.querySelector("#quote-hint");
-    const preference = form.querySelector("#quote-default");
+    const quoteButton = form.querySelector("#quote-mode");
+    const fieldset = form.querySelector("fieldset");
     const status = form.querySelector('[role="status"]');
     const send = form.querySelector('[type="submit"]');
     const draft = threadDraft(form, editor, status);
@@ -280,44 +279,26 @@ function composer(root, form) {
     form.addEventListener("focusout", event => {
         if (!form.contains(event.relatedTarget)) form.classList.remove("editing");
     });
-    const preferenceKey = "crs.quoteByDefault";
-    preference.checked = readStorage("localStorage", preferenceKey) === "on";
-    preference.addEventListener("change", () => {
-        if (!writeStorage("localStorage", preferenceKey, preference.checked ? "on" : "off")) {
-            status.textContent = "Could not save the default quote mode.";
-        }
-    });
-    let mode;
-    let armedAt = -Infinity;
-    function setMode(next) {
-        mode = next;
-        root.dataset.quoteMode = mode;
-        const label = { off: "Quote", once: "Quote once", persistent: "Quote multiple" }[mode];
-        modeButton.setAttribute("aria-label", label);
-        hint.textContent = { off: "Tap once for one quote, twice for multiple.", once: "Select a passage to quote.", persistent: "Select passages to quote." }[mode];
-        modeButton.setAttribute("aria-pressed", String(mode !== "off"));
-        prepareQuotes(root, mode);
+    function quoting() {
+        return !fieldset.disabled && quoteButton.ariaPressed === "true";
     }
-    const fieldset = form.querySelector("fieldset");
+    function syncQuotes(scope) {
+        prepareQuotes(scope, quoting());
+    }
+    syncQuotes(root);
     function setWritable(writable) {
-        if (writable === fieldset.disabled || !mode) {
+        if (writable === fieldset.disabled) {
             fieldset.hidden = fieldset.disabled = !writable;
             root.querySelector("#direct-input-notice").hidden = writable;
-            setMode(writable && preference.checked ? "persistent" : "off");
+            syncQuotes(root);
         }
     }
-    setWritable(!fieldset.disabled);
-    modeButton.addEventListener("click", () => {
-        const now = performance.now();
-        if (mode === "off") {
-            armedAt = now;
-            setMode("once");
-        } else {
-            setMode(mode === "once" && now - armedAt <= 400 ? "persistent" : "off");
-        }
+    quoteButton.addEventListener("click", () => {
+        quoteButton.ariaPressed = String(!quoting());
+        syncQuotes(root);
     });
     function insert(event) {
-        if (mode === "off" || editor.readOnly || fieldset.disabled) return;
+        if (!quoting() || editor.readOnly) return;
         const link = event.target.closest(".markdown a");
         const part = event.target.closest(".quote-chunk") ?? link?.querySelector(".quote-chunk");
         if (!part && !link) return;
@@ -326,15 +307,13 @@ function composer(root, form) {
         const separator = !text || text.endsWith("\n\n") ? "" : text.endsWith("\n") ? "\n" : "\n\n";
         editor.value = text + separator + formatQuote(part ? quotations.get(part) : link.href) + "\n\n";
         draft.save();
-        if (mode === "once") setMode("off");
         editor.focus({ preventScroll: true });
         editor.setSelectionRange(editor.value.length, editor.value.length);
         editor.scrollTop = editor.scrollHeight;
     }
     root.addEventListener("click", insert);
     root.addEventListener("keydown", event => {
-        if (event.key === "Escape") setMode("off");
-        else if (event.key === "Enter" || event.key === " ") insert(event);
+        if (event.key === "Enter" || event.key === " ") insert(event);
     });
     form.addEventListener("submit", async event => {
         event.preventDefault();
@@ -372,7 +351,7 @@ function composer(root, form) {
     });
     root.classList.add("has-draft");
     new ResizeObserver(() => root.style.setProperty("--draft-height", form.offsetHeight + "px")).observe(form);
-    return setWritable;
+    return { setWritable, syncQuotes };
 }
 
 function patchTurn(current, next) {
@@ -405,7 +384,7 @@ function patchTurn(current, next) {
     current.dataset.version = next.dataset.version;
 }
 
-function liveTranscript(root, setWritable) {
+function liveTranscript(root, { setWritable, syncQuotes }) {
     const turns = root.querySelector("#turns");
     if (!turns) return;
     const metadata = root.querySelector("#thread-metadata");
@@ -435,7 +414,7 @@ function liveTranscript(root, setWritable) {
             const current = turns.children[index];
             if (current) patchTurn(current, next);
             else turns.append(next);
-            if (root.dataset.quoteMode && root.dataset.quoteMode !== "off") prepareQuotes(turns.children[index], root.dataset.quoteMode);
+            syncQuotes(turns.children[index]);
         }
         while (turns.childElementCount > count) turns.lastElementChild.remove();
         for (const message of root.querySelectorAll("#pending-messages [data-client-id]")) {
