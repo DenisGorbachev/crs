@@ -10,3 +10,10 @@ age = { type = "age", recipients = [
     "age1sf4r4amev2svqr6llwg8hgtz9n7p5qdh7hh0mavcshzfrmgfduksnq3hql",
     "age1605gsnxpe536sprwccyumq74veg0g80u55n8ggems0t8deau6qdsfnq3m3"
 ] }
+
+[profiles]
+
+[profiles.test]
+
+[profiles.test.secrets]
+OPENAI_API_KEY= { provider = "age", value = "YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA1cjVOTDRDOGtxTitSVUY0VENKeHpabEdHVDQ2UTBjU1RZS01BWjd5UzNvCldOS3RYaXFmUUlxR08yQk1uZlUwQ1NxMmNZYWFQUWVSSnlmYlJKVmtCY2cKLT4gWDI1NTE5IHB6dXNsdTNXYjNTU0NUSUVicU4rRGptMHg2bFVUSjNwQmFMNnJqUm5Mak0KSk9vOWtVT0EvVFhWdCtUMERvNUtpRGVpU0VjREFCMDBsczNyVDhvaGVWQQotPiA7VTRcbS1ncmVhc2UgPURRICh3XUlRJHBfIF8KVkEKLS0tIDlVaEY0UGFvY3A5YVVKN1lmdHFqYlRKQkxIR0RmcUpJKzJ0NjAyL2RFdlEKjLQ5cf+NqaIldliFtH/3+3kEKAxIgX7Gir53LAWbyYZeGdEyIJQRsszn3nNeMmkfGwSB/wF0WEphOqmNwiuvqQLEgIWZ1wSfXyxNVM4j9T27ca3c34STmRjgWms9ggzk13DujSFTcZi9hjvW0tbLCYV3kL9l+coh971lKeLSBySXzg+t7izqzYsbFGMBggm71CFMkM2bLXHQRnMH+ElLpnhcvUeSLxLjBVWLzAMV1lyyBETKMYGlEOE10hh2JzS2wwWHpg==" }
