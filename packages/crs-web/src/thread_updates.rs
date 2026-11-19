@@ -48,7 +48,7 @@ impl ThreadUpdates {
         }
         let page = handle!(store.page(&snapshot, &self.source, record), PageFailed);
         let versions = &page.versions;
-        let files = FileLinks::from((self.source.as_str(), &page.record.thread));
+        let files = FileLinks::from((self.source.as_str(), &page.record.thread.cwd));
         let turns = handle!(render_turns(page.turns, versions, &self.versions, &files), RenderTurnsFailed);
         let html: Vec<_> = turns
             .into_iter()

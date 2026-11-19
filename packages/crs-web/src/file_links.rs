@@ -1,17 +1,15 @@
-use crate::{Route, UrlSegment, thread_markdown};
-use codex_app_server_protocol::{Thread, ThreadItemPayload, Turn, UserInput};
+use crate::{Route, UrlSegment};
 use codex_utils_absolute_path::AbsolutePathBuf;
-use pulldown_cmark::{Event, LinkType, Tag};
-use url::{Url, form_urlencoded::Serializer};
+use pulldown_cmark::{LinkType, Tag};
+use url::Url;
 
-pub struct FileLinks<'a> {
+pub struct FileLinks {
     pub route: String,
-    thread: &'a str,
     directory: Option<Url>,
 }
 
-impl<'a> From<(&str, &'a Thread)> for FileLinks<'a> {
-    fn from((source, thread): (&str, &'a Thread)) -> Self {
+impl From<(&str, &AbsolutePathBuf)> for FileLinks {
+    fn from((source, cwd): (&str, &AbsolutePathBuf)) -> Self {
         let server = Route::Server {
             source: UrlSegment {
                 value: source.into(),
@@ -19,14 +17,13 @@ impl<'a> From<(&str, &'a Thread)> for FileLinks<'a> {
         };
         Self {
             route: format!("{server}/files"),
-            thread: &thread.id,
-            directory: Url::from_directory_path(&thread.cwd).ok(),
+            directory: Url::from_directory_path(cwd).ok(),
         }
     }
 }
 
-impl FileLinks<'_> {
-    fn path(&self, tag: &Tag<'_>) -> Option<AbsolutePathBuf> {
+impl FileLinks {
+    pub fn href(&self, tag: &Tag<'_>) -> Option<String> {
         let Tag::Link {
             link_type,
             dest_url,
@@ -63,39 +60,12 @@ impl FileLinks<'_> {
         if url.scheme() != "file" {
             return None;
         }
-        AbsolutePathBuf::from_absolute_path_checked(url.to_file_path().ok()?).ok()
-    }
-
-    pub fn href(&self, tag: &Tag<'_>) -> Option<String> {
-        let path = self.path(tag)?;
-        let query = Serializer::new(String::new())
-            .append_pair("thread", self.thread)
-            .append_pair("path", path.to_str()?)
-            .finish();
-        Some(format!("{}?{query}", self.route))
-    }
-
-    pub fn contains(&self, turns: &[Turn], path: &AbsolutePathBuf) -> bool {
-        let linked = |text: &str| thread_markdown(text).any(|event| matches!(event, Event::Start(tag) if self.path(&tag).as_ref() == Some(path)));
-        turns
-            .iter()
-            .flat_map(|turn| &turn.items)
-            .any(|item| match &item.payload {
-                ThreadItemPayload::AgentMessage {
-                    text,
-                    ..
-                }
-                | ThreadItemPayload::Plan {
-                    text,
-                    ..
-                } => linked(text),
-                ThreadItemPayload::UserMessage {
-                    content,
-                    ..
-                } => content
-                    .iter()
-                    .any(|input| matches!(input, UserInput::Text { text, .. } if linked(text))),
-                _ => false,
-            })
+        let path = AbsolutePathBuf::from_absolute_path_checked(url.to_file_path().ok()?).ok()?;
+        let file = Url::from_file_path(path.to_str()?).ok()?;
+        let path = file.path();
+        Some(match file.host_str() {
+            Some(host) => format!("{}//{host}{path}", self.route),
+            None => format!("{}{path}", self.route),
+        })
     }
 }

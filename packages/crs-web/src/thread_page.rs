@@ -22,7 +22,7 @@ impl ThreadPage {
             mut record,
             turns,
         } = self;
-        let files = FileLinks::from((source, &record.thread));
+        let files = FileLinks::from((source, &record.thread.cwd));
         let turns = handle!(render_turns(turns, &versions, &[], &files), RenderTurnsFailed);
         let file_route = files.route;
         let has_turns = !turns.is_empty();
@@ -45,7 +45,7 @@ impl ThreadPage {
     }
 }
 
-pub fn render_turns(history: Vec<Turn>, versions: &[String], known: &[String], files: &FileLinks<'_>) -> Result<Vec<(usize, Element)>, RenderTurnsError> {
+pub fn render_turns(history: Vec<Turn>, versions: &[String], known: &[String], files: &FileLinks) -> Result<Vec<(usize, Element)>, RenderTurnsError> {
     use RenderTurnsError::*;
     let mut turns = Vec::new();
     for (number, ((index, mut turn), version)) in (1usize..).zip(history.into_iter().enumerate().zip(versions)) {

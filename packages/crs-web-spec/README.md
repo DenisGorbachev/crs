@@ -1,6 +1,6 @@
 # CRS-Web specification
 
-CRS-Web mirrors durable Codex thread history into Fjall and accepts messages through its Dioxus UI.
+CRS-Web is a single-user application. It mirrors durable Codex thread history into Fjall and accepts messages through its Dioxus UI.
 
 ## Configuration
 
@@ -64,7 +64,7 @@ Dioxus `Router<Route>` renders pages and typed links generate URLs. [Dioxus rout
 - `/servers/<source>` lists top-level threads by most recent update. Exclude attached children and subagents, including subagents without a recorded parent ID. A standalone fork remains eligible. Show the app-server working directory below each thread name. Each link targets `#turn-<id>` for the chronologically last turn, including an ongoing, failed or interrupted turn. A thread with no turns opens without a fragment.
 - `/servers/<source>/threads/new` opens from the server’s “New thread” link. Submitting the first message redirects to the new thread’s first turn.
 - `/servers/<source>/threads/<id>` displays synchronized turns and items in order, omitting reasoning items. Each turn has a stable HTML ID.
-- `/servers/<source>/files?thread=<id>&path=<absolute-path>` opens a file linked in that thread as plain text. Read its current bytes with the source’s `fs/readFile`. Resolve relative Markdown links against the thread’s working directory. Line references open the whole file.
+- `/servers/<source>/files/<path...>` opens a file as plain text using the source’s `fs/readFile`. For example, `/servers/local/files/tmp/notes.txt` reads `/tmp/notes.txt` from `local`. Resolve relative Markdown links against the thread’s working directory. Line references open the whole file.
 
 Place the controls below the message textarea with the submit button at the right edge. “Open in Codex” comes first in the thread toolbar. Use an external-link icon and a native link to `codex://threads/<thread-id>` so it works with JavaScript disabled. The link contains no CRS source identifier.
 

@@ -3,7 +3,7 @@ use dioxus::prelude::*;
 use serde_json::Value;
 use std::mem::take;
 
-pub fn thread_item_view(mut item: Value, files: &FileLinks<'_>) -> Element {
+pub fn thread_item_view(mut item: Value, files: &FileLinks) -> Element {
     let version = content_version(&item);
     let Some(fields) = item.as_object_mut() else { return structured_value(&item) };
     let id = fields

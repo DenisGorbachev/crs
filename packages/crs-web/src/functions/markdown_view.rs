@@ -5,12 +5,8 @@ use pulldown_cmark::{CodeBlockKind, Event, Options, Parser, Tag, TagEnd};
 use std::iter::from_fn;
 use url::{ParseError, Url};
 
-pub fn thread_markdown(markdown: &str) -> Parser<'_> {
-    Parser::new_ext(markdown, Options::ENABLE_TABLES | Options::ENABLE_STRIKETHROUGH | Options::ENABLE_TASKLISTS)
-}
-
-pub fn markdown_view(markdown: &str, files: &FileLinks<'_>) -> Element {
-    let mut events = thread_markdown(markdown);
+pub fn markdown_view(markdown: &str, files: &FileLinks) -> Element {
+    let mut events = Parser::new_ext(markdown, Options::ENABLE_TABLES | Options::ENABLE_STRIKETHROUGH | Options::ENABLE_TASKLISTS);
     let mut html = String::new();
     let safe_events = from_fn(|| {
         Some(match events.next()? {
