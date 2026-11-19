@@ -1,4 +1,4 @@
-use crate::{CodexAppServer, DEFAULT_CONFIG_RELATIVE_PATH, TranscribeParams};
+use crate::{CodexAppServer, ConfigPath, DEFAULT_CONFIG_RELATIVE_PATH, TranscribeParams};
 use errgonomic::{handle, handle_bool, handle_opt, map_err};
 use openai_dive::v1::resources::audio::AudioOutputFormat;
 use serde::{Deserialize, Serialize};
@@ -17,7 +17,7 @@ use time::OffsetDateTime;
 pub struct Config {
     #[serde(default, with = "time::serde::rfc3339::option", skip_serializing_if = "Option::is_none")]
     pub threads_created_since: Option<OffsetDateTime>,
-    pub db_path: PathBuf,
+    pub db_path: ConfigPath,
     #[serde(default)]
     pub transcribe_params: TranscribeParams,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -73,13 +73,13 @@ impl TryFrom<&Path> for Config {
             path
         );
         if let Some(dir) = path.parent() {
-            config.db_path = dir.join(config.db_path);
+            config.db_path.resolve_relative_to(dir);
             config.codex_app_servers.values_mut().for_each(|server| {
                 if let CodexAppServer::UnixSocket {
                     socket_path: Some(socket_path),
                 } = server
                 {
-                    *socket_path = dir.join(&*socket_path);
+                    socket_path.resolve_relative_to(dir);
                 }
             });
         }

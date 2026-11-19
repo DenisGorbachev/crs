@@ -22,7 +22,7 @@ pub struct Server {
 impl Server {
     pub fn open(config: Config) -> Result<Self, ServerOpenError> {
         use ServerOpenError::*;
-        let db = handle!(Database::builder(&config.db_path).open(), OpenFailed, path: config.db_path);
+        let db = handle!(Database::builder(&config.db_path).open(), OpenFailed, path: config.db_path.as_ref());
         let form_key = handle!(load_form_key(&db, config.form_key_env.as_deref()), LoadFormKeyFailed);
         let threads = handle!(ThreadStore::open(&db), OpenThreadsFailed);
         let config = Arc::new(config);

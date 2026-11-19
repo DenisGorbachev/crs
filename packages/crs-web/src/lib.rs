@@ -18,6 +18,8 @@ mod command;
 pub use command::*;
 mod config;
 pub use config::*;
+mod config_path;
+pub use config_path::*;
 mod functions;
 pub use functions::*;
 mod server;

@@ -1,3 +1,4 @@
+use crate::ConfigPath;
 use CodexAppServer::*;
 use codex_app_server_client::{AppServerClient, DEFAULT_IN_PROCESS_CHANNEL_CAPACITY, RemoteAppServerClient, RemoteAppServerConnectArgs, RemoteAppServerEndpoint, app_server_control_socket_path};
 use codex_utils_absolute_path::AbsolutePathBuf;
@@ -15,7 +16,7 @@ use url::Url;
 pub enum CodexAppServer {
     UnixSocket {
         #[serde(skip_serializing_if = "Option::is_none")]
-        socket_path: Option<PathBuf>,
+        socket_path: Option<ConfigPath>,
     },
     Websocket {
         url: Url,
@@ -32,7 +33,7 @@ impl CodexAppServer {
                 socket_path,
             } => RemoteAppServerEndpoint::UnixSocket {
                 socket_path: match socket_path {
-                    Some(path) => handle!(AbsolutePathBuf::relative_to_current_dir(path), RelativeToCurrentDirFailed, socket_path: path.as_path()),
+                    Some(path) => handle!(AbsolutePathBuf::relative_to_current_dir(path), RelativeToCurrentDirFailed, socket_path: path.as_ref()),
                     None => {
                         let home = handle!(find_codex_home(), FindCodexHomeFailed);
                         handle!(app_server_control_socket_path(&home), AppServerControlSocketPathFailed, home: home.to_path_buf())
