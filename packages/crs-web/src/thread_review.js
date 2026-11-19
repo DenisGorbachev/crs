@@ -296,7 +296,33 @@ function prepareQuotes(scope, enabled) {
 }
 
 function atTranscriptBottom() {
-    return document.documentElement.scrollHeight - innerHeight - scrollY <= 4;
+    const page = document.scrollingElement ?? document.documentElement;
+    return page.scrollHeight - page.clientHeight - page.scrollTop <= 4;
+}
+
+function positionComposer(root, form) {
+    root.classList.add("has-draft");
+    const viewport = window.visualViewport;
+    function syncViewport() {
+        const page = document.scrollingElement ?? document.documentElement;
+        const follow = atTranscriptBottom();
+        const track = viewport && (viewport.scale === 1 || form.classList.contains("editing"));
+        const inset = track ? Math.max(0, page.clientHeight - viewport.offsetTop - viewport.height) : 0;
+        root.style.setProperty("--visible-height", track ? viewport.height + "px" : "100dvh");
+        root.style.setProperty("--draft-bottom", inset + "px");
+        const space = (form.offsetHeight + inset) + "px";
+        if (root.style.getPropertyValue("--draft-space") !== space) {
+            root.style.setProperty("--draft-space", space);
+            if (follow) page.scrollTop = page.scrollHeight;
+        }
+    }
+    new ResizeObserver(syncViewport).observe(form);
+    viewport?.addEventListener("resize", syncViewport);
+    viewport?.addEventListener("scroll", syncViewport);
+    window.addEventListener("resize", syncViewport);
+    form.addEventListener("focusin", syncViewport);
+    form.addEventListener("focusout", syncViewport);
+    syncViewport();
 }
 
 function composer(root, form, syncControls, queue) {
@@ -378,8 +404,7 @@ function composer(root, form, syncControls, queue) {
             editor.readOnly = false;
         }
     });
-    root.classList.add("has-draft");
-    new ResizeObserver(() => root.style.setProperty("--draft-height", form.offsetHeight + "px")).observe(form);
+    positionComposer(root, form);
     return { setWritable, syncQuotes };
 }
 

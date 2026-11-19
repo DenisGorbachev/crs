@@ -27,7 +27,7 @@ textarea { box-sizing: border-box; width: 100%; resize: vertical; padding: .5rem
 .icon-button[aria-pressed="true"] { color: Canvas; background: CanvasText; }
 .icon-button:disabled { opacity: .55; }
 [hidden] { display: none !important; }
-#thread-review { --draft-height: 0px; padding-bottom: calc(2rem + var(--draft-height)); }
+#thread-review { padding-bottom: calc(2rem + var(--draft-space, 0px)); }
 #thread-review :is(section, article[data-response]) { scroll-margin-top: 8px; }
 article[aria-current="true"] { position: relative; }
 article[aria-current="true"]::before {
@@ -50,9 +50,9 @@ article[aria-current="true"]::before {
 .markdown pre { white-space: pre; overflow: auto; padding: .75rem; background: color-mix(in srgb, CanvasText 6%, Canvas); }
 .quote-chunk[role="button"]:focus-visible { background: Highlight; color: HighlightText; }
 .has-draft .thread-draft {
-    position: fixed; z-index: 20; bottom: 0; inset-inline: 0; box-sizing: border-box; max-width: 76ch;
+    position: fixed; z-index: 20; bottom: var(--draft-bottom, 0px); inset-inline: 0; box-sizing: border-box; max-width: 76ch;
     margin: 0 auto; background: Canvas; border-top: 1px solid GrayText; padding: .4rem 1rem max(.4rem, env(safe-area-inset-bottom));
-    max-height: 45dvh; overflow: auto; gap: .25rem;
+    max-height: min(45dvh, var(--visible-height, 100dvh)); overflow: auto; gap: .25rem;
 }
 .has-draft textarea { height: 3rem; min-height: 2rem; max-height: 18dvh; resize: none; }
 .has-draft .thread-draft.editing textarea { height: 8rem; }
