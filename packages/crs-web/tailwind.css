@@ -13,6 +13,8 @@ section { margin-top: 2.5rem; }
 pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 article img, article audio { display: block; max-width: 100%; }
 summary { cursor: pointer; }
+/* Keep browser Find from opening collapsed sections when their contents match. */
+details:not([open]) > :not(summary) { display: none; }
 dt { font-weight: 600; }
 dd, ol { margin: 0 0 .5rem; padding-inline-start: 1rem; }
 form { display: grid; gap: .5rem; margin-block: 1.5rem; }

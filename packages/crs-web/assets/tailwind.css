@@ -584,6 +584,9 @@ article img, article audio {
 summary {
   cursor: pointer;
 }
+details:not([open]) > :not(summary) {
+  display: none;
+}
 dt {
   font-weight: 600;
 }
