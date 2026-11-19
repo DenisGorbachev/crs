@@ -1,4 +1,5 @@
 use crate::ThreadRecord;
+use codex_utils_absolute_path::AbsolutePathBuf;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -7,6 +8,7 @@ pub struct ThreadSummary {
     pub server_id: String,
     pub archived: bool,
     pub title: String,
+    pub cwd: AbsolutePathBuf,
     pub updated_at: i64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_turn_id: Option<String>,
@@ -20,6 +22,7 @@ impl From<(&str, ThreadRecord)> for ThreadSummary {
             server_id: server_id.to_owned(),
             archived: record.archived,
             title,
+            cwd: record.thread.cwd,
             updated_at: record.thread.updated_at,
             last_turn_id: record.last_turn_id,
         }

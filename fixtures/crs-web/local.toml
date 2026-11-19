@@ -1,4 +1,3 @@
-threads_created_since = "2026-11-18T00:00:00Z"
 db_path = "../../target/crs-web-local"
 
 [codex_app_servers.local]

@@ -1,7 +1,6 @@
 # TODO
 
-- List parent threads from every working directory on each Codex server page.
-- Display the app-server working directory below each thread name.
+- Refactor the web UI to use the official Dioxus Components and verify existing interactions.
 
 ## Working agreements
 

@@ -1,4 +1,4 @@
-use crate::{CodexSync, Config, ConfigLoadError, ThreadStore, ThreadStoreOpenError};
+use crate::{CodexSync, Config, ConfigLoadError, LoadFormKeyError, ThreadStore, ThreadStoreOpenError, load_form_key};
 use derive_more::{Deref, DerefMut};
 use errgonomic::handle;
 use fjall::Database;
@@ -24,6 +24,7 @@ impl Server {
         use ServerOpenError::*;
         let config = handle!(Config::load(path), LoadFailed);
         let db = handle!(Database::builder(&config.db_path).open(), OpenFailed, path: config.db_path);
+        let form_key = handle!(load_form_key(&db, config.form_key_env.as_deref()), LoadFormKeyFailed);
         let threads = handle!(ThreadStore::open(&db), OpenThreadsFailed);
         let config = Arc::new(config);
         let sources = config
@@ -48,7 +49,7 @@ impl Server {
         Ok(Self {
             config,
             sources,
-            form_key: Uuid::new_v4(),
+            form_key,
             threads,
             db,
         })
@@ -57,6 +58,8 @@ impl Server {
 
 #[derive(Error, Debug)]
 pub enum ServerOpenError {
+    #[error("failed to initialize the form key")]
+    LoadFormKeyFailed { source: LoadFormKeyError },
     #[error("failed to open CRS-Web thread storage")]
     OpenThreadsFailed { source: ThreadStoreOpenError },
     #[error("failed to load CRS-Web configuration")]

@@ -13,9 +13,11 @@ use time::OffsetDateTime;
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
-    #[serde(with = "time::serde::rfc3339")]
-    pub threads_created_since: OffsetDateTime,
+    #[serde(default, with = "time::serde::rfc3339::option", skip_serializing_if = "Option::is_none")]
+    pub threads_created_since: Option<OffsetDateTime>,
     pub db_path: PathBuf,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub form_key_env: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reconcile_interval_seconds: Option<NonZeroU64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -51,7 +53,8 @@ impl Config {
     }
 
     pub fn includes_thread(&self, created_at: i64) -> bool {
-        OffsetDateTime::from_unix_timestamp(created_at).is_ok_and(|created_at| created_at >= self.threads_created_since)
+        self.threads_created_since
+            .is_none_or(|since| OffsetDateTime::from_unix_timestamp(created_at).is_ok_and(|created| created >= since))
     }
 
     pub fn thread_refresh_interval(&self) -> Duration {

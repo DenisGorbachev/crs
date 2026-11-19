@@ -46,6 +46,7 @@ pub fn ServerPage(source: ReadSignal<UrlSegment>) -> Element {
                         li { key: "{thread.id}",
                             Link { to: Route::thread(source(), thread.id.clone(), thread.last_turn_id.as_deref()), "{thread.title}" }
                             if thread.archived { " · Archived" }
+                            small { class: "block", "{thread.cwd.display()}" }
                         }
                     }
                 }

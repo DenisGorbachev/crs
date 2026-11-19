@@ -21,7 +21,7 @@ url = "wss://codex.example.com/rpc"
 auth_token_env = "CODEX_REMOTE_TOKEN"
 ```
 
-`threads_created_since` is a required RFC 3339 timestamp shared by all sources. Import history when `createdAt >= threads_created_since`. Use midnight UTC for a date-only cutoff. The reconciliation interval defaults to 60 seconds.
+Omit `threads_created_since` to import the full history across all working directories. When set, import threads with `createdAt >= threads_created_since` from every source. Use midnight UTC for a date-only cutoff. The reconciliation interval defaults to 60 seconds.
 
 `min_thread_created_at` makes the comparison explicit. `thread_history_start_at` can also refer to the first imported turn within a thread. `threads_created_since` identifies which timestamp controls thread eligibility.
 
@@ -59,7 +59,7 @@ Omitting `socket_path` selects the control socket under `CODEX_HOME`, which defa
 Dioxus `Router<Route>` renders pages and typed `Link` components generate URLs. [Dioxus routing guide](https://dioxuslabs.com/learn/0.7/essentials/router/).
 
 - `/` lists all configured Codex servers, including those with no synchronized threads.
-- `/servers/<source>` lists top-level threads by most recent update. Exclude attached children and subagents, including subagents without a recorded parent ID. A standalone fork remains eligible. Each link targets `#turn-<id>` for the chronologically last turn, including an ongoing, failed or interrupted turn. A thread with no turns opens without a fragment.
+- `/servers/<source>` lists top-level threads by most recent update. Exclude attached children and subagents, including subagents without a recorded parent ID. A standalone fork remains eligible. Show the app-server working directory below each thread name. Each link targets `#turn-<id>` for the chronologically last turn, including an ongoing, failed or interrupted turn. A thread with no turns opens without a fragment.
 - `/servers/<source>/threads/<id>` displays synchronized turns and items in order, omitting reasoning items. Each turn has a stable HTML ID.
 
 Right-align user messages in dark bubbles with white text. Left-align assistant messages. Give both accessible speaker names. Collapse every other visible item to one expandable line. A command shows its command line. A web search shows its query. Expansion reveals the full item and metadata. Use compact icon buttons with accessible names for navigation, quoting and submission.
@@ -70,7 +70,7 @@ Unknown sources, missing threads and threads outside the cutoff return HTTP 404.
 
 ## Messages
 
-The server page accepts a first message for a new thread. The thread page accepts a follow-up when direct input is available. Both forms work with native HTML POST. Preserve nonblank message text and reject whitespace-only input.
+The server page accepts a first message for a new thread. The thread page accepts a follow-up when direct input is available. Both forms work with native HTML POST. Validate the form key before submitting to Codex. Generate it once per Fjall database and reuse it after restarts. To supply a dedicated random UUID instead, set `form_key_env` to the name of its environment variable. Preserve nonblank message text and reject whitespace-only input.
 
 Use `thread/start` for a new thread or `thread/resume` with `excludeTurns` for an existing thread on its configured source. Submit one `turn/start` with a fresh client message ID and the server’s existing settings. Codex starts an idle turn or steers the active turn. Open a newly created thread directly. In an open thread, acknowledge the submission in place and reconcile its bubble by client message ID. Never retry input automatically.
 

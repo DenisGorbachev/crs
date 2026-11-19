@@ -83,7 +83,7 @@ impl MessageSubmission {
 
 #[derive(Error, Debug)]
 pub enum MessageSubmissionSendError {
-    #[error("The form has expired. Reload the page and try again.")]
+    #[error("This form key does not match this CRS-Web instance. Reload the page before sending.")]
     FormKeyInvalid {},
     #[error("Enter a message before sending.")]
     MessageEmpty {},
