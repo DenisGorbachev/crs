@@ -76,7 +76,11 @@ Unknown sources, missing threads and threads outside the cutoff return HTTP 404.
 
 The server page accepts a first message for a new thread. The thread page accepts a follow-up when direct input is available. Both forms work with native HTML POST. Validate the form key before submitting to Codex. Generate it once per Fjall database and reuse it after restarts. To supply a dedicated random UUID instead, set `form_key_env` to the name of its environment variable. Preserve nonblank message text and reject whitespace-only input.
 
-Use `thread/start` for a new thread or `thread/resume` with `excludeTurns` for an existing thread on its configured source. Submit one `turn/start` with a fresh client message ID and the server’s existing settings. Codex starts an idle turn or steers the active turn. Open a newly created thread directly. In an open thread, acknowledge the submission in place and reconcile its bubble by client message ID. Never retry input automatically.
+Start a new thread and its first turn with `thread/start` and `turn/start`. For a follow-up, resume the existing thread and call `thread/queue/add` with a fresh client message ID. Let Codex dispatch eligible idle threads and drain busy threads after their current turn.
+
+Read all `thread/queue/list` pages for visible threads. Refresh after local mutations and received queue notifications. Periodic reads also capture changes from other clients. Below each queued message, offer **Steer**, **Edit**, **Cancel**. Edit text parts in place with `thread/queue/update`, retaining attachments and annotated input. Cancel with `thread/queue/delete`. Preserve structured input and metadata when steering.
+
+To steer, check the active turn ID, persist the original submission in Fjall, delete the selected queue entry, then call `turn/steer` with that turn ID and the original client message ID. Steer only after confirmed deletion. A definitive pre-admission rejection returns the input to the tail of the queue. After uncertain delivery or interruption before the message reaches history, retain the original input for download, including while Codex is offline. Never automatically retry an uncertain steer. Steering previews have no edit or cancel actions. Retire the receipt when a replacement queue entry has the same client ID or its client ID is saved in history. The pinned Codex API cannot condition deletion on the revision last read, so edits made concurrently by another client can race promotion.
 
 ## Quoting thread messages
 

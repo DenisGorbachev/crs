@@ -46,9 +46,10 @@ pub async fn thread_events(Extension(server): Extension<SharedServer>, Extension
         viewed.retain(|_, sender| sender.receiver_count() != 0);
         viewed
             .entry(id)
-            .or_insert_with(|| watch::channel(()).0)
+            .or_insert_with(|| watch::channel(None).0)
             .subscribe()
     };
+    source.viewed_changed.notify_one();
     let changes = stream::unfold(receiver, |mut receiver| async move { receiver.changed().await.ok().map(|()| (Ok(None), receiver)) });
     let events = stream::once(async move { Ok(Some(form_key)) })
         .chain(changes)

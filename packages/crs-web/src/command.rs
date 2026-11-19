@@ -39,6 +39,7 @@ impl Command {
             .route("/api/thread-events", get(thread_events))
             .route("/api/thread-updates", post(thread_updates))
             .route("/messages", post(submit_message))
+            .route("/thread-queue.js", get(async || ([(CONTENT_TYPE, "text/javascript; charset=utf-8")], include_str!("thread_queue.js"))))
             .route("/thread-review.js", get(async || ([(CONTENT_TYPE, "text/javascript; charset=utf-8")], include_str!("thread_review.js"))))
             .serve_api_application(
                 ServeConfig::new()

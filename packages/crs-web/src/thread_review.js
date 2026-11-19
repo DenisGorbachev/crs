@@ -1,3 +1,5 @@
+import { threadQueue } from "/thread-queue.js";
+
 const segmenter = typeof Intl.Segmenter === "function" && new Intl.Segmenter(undefined, { granularity: "sentence" });
 const quotations = new WeakMap();
 
@@ -296,7 +298,7 @@ function atTranscriptBottom() {
     return document.documentElement.scrollHeight - innerHeight - scrollY <= 4;
 }
 
-function composer(root, form, syncControls) {
+function composer(root, form, syncControls, queue) {
     const editor = form.elements.message;
     const quoteButton = form.querySelector("#quote-mode");
     const fieldset = form.querySelector("fieldset");
@@ -360,18 +362,11 @@ function composer(root, form, syncControls) {
                 status.textContent = await response.text();
                 return;
             }
-            const messageId = await response.json();
             const follow = atTranscriptBottom();
+            queue.accepted(await response.json());
             draft.acknowledge(submitted);
             editor.value = "";
             status.textContent = "";
-            if (!root.querySelector('#turns [data-client-id="' + CSS.escape(messageId) + '"]')) {
-                const pending = root.querySelector("#pending-messages");
-                const row = pending.querySelector("template").content.cloneNode(true);
-                row.firstElementChild.dataset.clientId = messageId;
-                row.querySelector(".user-bubble").textContent = submitted;
-                pending.append(row);
-            }
             if (follow) window.scrollTo(0, document.documentElement.scrollHeight);
         } catch {
             status.textContent = "Could not confirm delivery. Check the thread before sending again.";
@@ -417,9 +412,12 @@ function patchTurn(current, next) {
     }
     while (current.children.length > children.length) current.lastElementChild.remove();
     current.dataset.version = next.dataset.version;
+    current.dataset.inProgress = next.dataset.inProgress;
 }
 
-function liveTranscript(root, { setWritable, syncQuotes }) {
+function liveTranscript(root, form) {
+    const queue = threadQueue(root, refresh);
+    const {setWritable, syncQuotes} = composer(root, form, navigation(root), queue);
     const turns = root.querySelector("#turns");
     if (!turns) return;
     const metadata = root.querySelector("#thread-metadata");
@@ -428,11 +426,11 @@ function liveTranscript(root, { setWritable, syncQuotes }) {
             signal: AbortSignal.timeout(30000),
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({source: turns.dataset.source, id: turns.dataset.thread, header: metadata.dataset.version, versions: Array.from(turns.children, el => el.dataset.version)}),
+            body: JSON.stringify({source: turns.dataset.source, id: turns.dataset.thread, header: metadata.dataset.version, queue_version: queue.version, versions: Array.from(turns.children, el => el.dataset.version)}),
         });
         if (response.status === 204) return;
         if (!response.ok) throw new Error("Thread updates returned HTTP " + response.status);
-        const [count, changed, header] = await response.json();
+        const [count, changed, header, queued] = await response.json();
         const follow = atTranscriptBottom();
         if (header) {
             metadata.textContent = header.metadata;
@@ -452,9 +450,7 @@ function liveTranscript(root, { setWritable, syncQuotes }) {
             syncQuotes(turns.children[index]);
         }
         while (turns.childElementCount > count) turns.lastElementChild.remove();
-        for (const message of root.querySelectorAll("#pending-messages [data-client-id]")) {
-            if (turns.querySelector('[data-client-id="' + CSS.escape(message.dataset.clientId) + '"]')) message.remove();
-        }
+        queue.sync(queued);
         root.querySelector("#empty-transcript").hidden = count !== 0;
         if (follow) window.scrollTo(0, document.documentElement.scrollHeight);
     };
@@ -518,5 +514,5 @@ if (pageNav) {
 const thread = document.querySelector("#thread-review");
 if (thread) {
     const form = thread.querySelector(".thread-draft");
-    if (form) liveTranscript(thread, composer(thread, form, navigation(thread)));
+    if (form) liveTranscript(thread, form);
 }

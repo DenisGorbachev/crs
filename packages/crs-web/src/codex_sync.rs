@@ -1,4 +1,4 @@
-use crate::{CodexAppServer, CodexConnection, CodexConnectionRequestError, Config, ThreadHistory, ThreadHistoryFetchError, ThreadRecord, ThreadRecordRefreshMetadataError, ThreadStore, ThreadStoreRecordError, ThreadStoreWriteError};
+use crate::{CodexAppServer, CodexConnection, CodexConnectionRequestError, Config, FetchPagesError, QueueSnapshot, QueuedMessage, ThreadHistory, ThreadHistoryFetchError, ThreadRecord, ThreadRecordRefreshMetadataError, ThreadStore, ThreadStoreQueuePreviewsError, ThreadStoreRecordError, ThreadStoreWriteError};
 use codex_app_server_client::{AppServerClient, AppServerEvent};
 use codex_app_server_protocol::ThreadSourceKind::*;
 use codex_app_server_protocol::{ClientRequest, JSONRPCErrorError, RequestId, ServerNotification, SortDirection, ThreadListParams, ThreadListResponse, ThreadSortKey, ThreadStatus};
@@ -14,6 +14,8 @@ use tokio::time::{MissedTickBehavior, interval, sleep};
 use tracing::warn;
 use uuid::Uuid;
 
+pub type ViewedThreads = Arc<Mutex<HashMap<String, watch::Sender<Option<Arc<QueueSnapshot>>>>>>;
+
 pub struct CodexSync {
     pub server_id: String,
     pub source: CodexAppServer,
@@ -22,7 +24,7 @@ pub struct CodexSync {
     pub writers: Mutex<HashMap<String, Weak<Mutex<()>>>>,
     pub refresh: Notify,
     pub viewed_changed: Notify,
-    pub viewed: Arc<Mutex<HashMap<String, watch::Sender<()>>>>,
+    pub viewed: ViewedThreads,
 }
 
 impl CodexSync {
@@ -63,14 +65,20 @@ impl CodexSync {
     async fn consume_events(&self, client: &mut AppServerClient) {
         while let Some(event) = client.next_event().await {
             match event {
-                AppServerEvent::ServerNotification(notification) => {
-                    if let ServerNotification::ThreadStatusChanged(event) = *notification {
+                AppServerEvent::ServerNotification(notification) => match *notification {
+                    ServerNotification::ThreadQueueChanged(event) => {
+                        if self.is_viewed(&event.thread_id).await {
+                            self.viewed_changed.notify_one();
+                        }
+                    }
+                    ServerNotification::ThreadStatusChanged(event) => {
                         if self.is_viewed(&event.thread_id).await {
                             self.viewed_changed.notify_one();
                         }
                         self.refresh.notify_one();
                     }
-                }
+                    _ => (),
+                },
                 AppServerEvent::Lagged {
                     skipped,
                 } => {
@@ -111,7 +119,7 @@ impl CodexSync {
         }
     }
 
-    async fn is_viewed(&self, id: &str) -> bool {
+    pub async fn is_viewed(&self, id: &str) -> bool {
         self.viewed
             .lock()
             .await
@@ -119,7 +127,7 @@ impl CodexSync {
             .is_some_and(|sender| sender.receiver_count() != 0)
     }
 
-    async fn lock_thread(&self, id: &str) -> OwnedMutexGuard<()> {
+    pub async fn lock_thread(&self, id: &str) -> OwnedMutexGuard<()> {
         let writer = {
             let mut writers = self.writers.lock().await;
             writers.retain(|_, writer| writer.strong_count() != 0);
@@ -149,12 +157,41 @@ impl CodexSync {
             };
             stream::iter(ids)
                 .for_each_concurrent(4, |id| async move {
-                    if let Err(error) = self.refresh_viewed(client, &id).await {
+                    let (history, queue) = tokio::join!(self.refresh_viewed(client, &id), self.refresh_queue(client, &id));
+                    if let Err(error) = queue {
+                        warn!(server_id = self.server_id, %id, error = %ErrorDisplayer(&error), "failed to refresh Codex queue");
+                    }
+                    if let Err(error) = history {
                         warn!(server_id = self.server_id, %id, error = %ErrorDisplayer(&error), "failed to refresh viewed thread");
                     }
                 })
                 .await;
         }
+    }
+
+    pub async fn refresh_queue(&self, client: &CodexConnection, id: &str) -> Result<(), CodexSyncRefreshQueueError> {
+        use CodexSyncRefreshQueueError::*;
+        let _guard = self.lock_thread(id).await;
+        let items = handle!(client.queued_submissions(id).await, ReadQueueFailed);
+        let messages = items.iter().map(QueuedMessage::from).collect();
+        let store = self.store.clone();
+        let source = self.server_id.clone();
+        let thread_id = id.to_owned();
+        let previews = handle!(spawn_blocking(move || store.queue_previews(&source, &thread_id, messages)).await, JoinFailed);
+        let messages = handle!(previews, ReadPreviewsFailed);
+        if let Some(sender) = self.viewed.lock().await.get(id) {
+            sender.send_if_modified(|current| {
+                if current
+                    .as_ref()
+                    .is_some_and(|queue| queue.messages == messages)
+                {
+                    return false;
+                }
+                *current = Some(Arc::new(QueueSnapshot::from(messages)));
+                true
+            });
+        }
+        Ok(())
     }
 
     async fn refresh_viewed(&self, client: &CodexConnection, id: &str) -> Result<(), CodexSyncRefreshViewedError> {
@@ -273,7 +310,7 @@ impl CodexSync {
             let _guard = guard;
             store.write(&server_id, record, history).map(|changed| {
                 if changed && let Some(sender) = viewed.blocking_lock().get(&id) {
-                    sender.send_replace(());
+                    sender.send_modify(|_| ());
                 }
             })
         })
@@ -313,5 +350,17 @@ pub enum CodexSyncScanError {
     CursorInvalid { archived: bool, parent: Option<String> },
 }
 
+#[derive(Error, Debug)]
+pub enum CodexSyncRefreshQueueError {
+    #[error("could not read queued messages")]
+    ReadQueueFailed { source: FetchPagesError },
+    #[error("queue preview task failed")]
+    JoinFailed { source: JoinError },
+    #[error("could not read pending steering messages")]
+    ReadPreviewsFailed { source: ThreadStoreQueuePreviewsError },
+}
+
 mod send;
 pub use send::*;
+mod change_queue;
+pub use change_queue::*;

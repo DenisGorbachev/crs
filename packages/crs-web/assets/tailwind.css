@@ -38,6 +38,9 @@
   .block {
     display: block;
   }
+  .flex {
+    display: flex;
+  }
   .hidden {
     display: none;
   }
@@ -53,6 +56,15 @@
   }
   .list-inside {
     list-style-position: inside;
+  }
+  .items-center {
+    align-items: center;
+  }
+  .justify-end {
+    justify-content: flex-end;
+  }
+  .gap-1 {
+    gap: calc(var(--spacing) * 1);
   }
   .truncate {
     overflow: hidden;
@@ -87,6 +99,9 @@
   }
   .text-white {
     color: var(--color-white);
+  }
+  .lowercase {
+    text-transform: lowercase;
   }
   .scheme-dark {
     color-scheme: dark;

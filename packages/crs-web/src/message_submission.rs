@@ -1,4 +1,4 @@
-use crate::{CodexAppServerConnectError, CodexConnection, CodexSyncSendError, Route, SharedServer, ThreadStoreRecordError};
+use crate::{CodexAppServerConnectError, CodexConnection, CodexSyncChangeQueueError, CodexSyncSendError, MessageAction, QueuedMessage, Route, SharedServer, ThreadStoreRecordError, UrlSegment};
 use axum::http::{HeaderMap, StatusCode, header::ACCEPT};
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::{Extension, Form, Json};
@@ -14,18 +14,31 @@ pub struct MessageSubmission {
     pub source: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub thread_id: Option<String>,
+    #[serde(default)]
     pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub action: Option<MessageAction>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub queued_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub original: Option<String>,
     pub form_key: String,
 }
 
 pub async fn submit_message(Extension(server): Extension<SharedServer>, headers: HeaderMap, Form(form): Form<MessageSubmission>) -> Response {
-    match form.send(server).await {
-        Ok((_, message_id))
+    let result = match tokio::spawn(form.send(server)).await {
+        Ok(result) => result,
+        Err(source) => Err(MessageSubmissionSendError::JoinFailed {
+            source,
+        }),
+    };
+    match result {
+        Ok((_, receipt))
             if headers
                 .get(ACCEPT)
                 .is_some_and(|header| header == "application/json") =>
         {
-            Json(message_id).into_response()
+            Json(receipt).into_response()
         }
         Ok((route, _)) => Redirect::to(&route.to_string()).into_response(),
         Err(error) => {
@@ -39,7 +52,7 @@ pub async fn submit_message(Extension(server): Extension<SharedServer>, headers:
 }
 
 impl MessageSubmission {
-    pub async fn send(self, server: SharedServer) -> Result<(Route, String), MessageSubmissionSendError> {
+    pub async fn send(self, server: SharedServer) -> Result<(Route, Option<QueuedMessage>), MessageSubmissionSendError> {
         use MessageSubmissionSendError::*;
         let (sync, db) = {
             let server = server.lock().await;
@@ -47,8 +60,8 @@ impl MessageSubmission {
             let source = handle_opt!(server.sources.get(&self.source), SourceNotFound);
             (source.clone(), server.db.clone())
         };
-        handle_bool!(self.message.trim().is_empty(), MessageEmpty);
-        let record = match self.thread_id {
+        handle_bool!(matches!(self.action, None | Some(MessageAction::Edit)) && self.message.trim().is_empty(), MessageEmpty);
+        let record = match self.thread_id.clone() {
             Some(id) => {
                 let sync = sync.clone();
                 let result = handle!(
@@ -72,12 +85,46 @@ impl MessageSubmission {
         };
         let client = handle!(sync.source.connect().await, ConnectFailed);
         let connection = CodexConnection::from(&client);
-        let result = sync.send(&connection, record, self.message).await;
+        let result = async {
+            let Some(action) = self.action else {
+                return Ok(handle!(sync.send(&connection, record, self.message).await, SendFailed));
+            };
+            let record = handle_opt!(record, ThreadNotFound);
+            handle_bool!(record.thread.can_accept_direct_input == Some(false), ReadOnly);
+            let queued_id = handle_opt!(self.queued_id, QueueIdMissing);
+            let id = record.thread.id;
+            let _guard = sync.lock_thread(&id).await;
+            let result = sync
+                .change_queue(&connection, &id, queued_id, action, self.original.as_deref(), self.message)
+                .await;
+            sync.viewed_changed.notify_one();
+            let updated = handle!(result, ChangeQueueFailed);
+            Ok((
+                Route::thread(
+                    UrlSegment {
+                        value: self.source.clone(),
+                    },
+                    id,
+                    record.last_turn_id.as_deref(),
+                ),
+                updated,
+            ))
+        }
+        .await;
+        if let Some(id) = self.thread_id.as_deref()
+            && sync.is_viewed(id).await
+            && let Err(error) = sync.refresh_queue(&connection, id).await
+        {
+            if let Some(sender) = sync.viewed.lock().await.get(id) {
+                sender.send_replace(None);
+            }
+            warn!(%id, error = %ErrorDisplayer(&error), "could not refresh queue after submission");
+        }
         drop(connection);
         if let Err(error) = client.shutdown().await {
             warn!(server_id = self.source, %error, "failed to close Codex submission connection");
         }
-        Ok(handle!(result, SendFailed))
+        result
     }
 }
 
@@ -93,12 +140,18 @@ pub enum MessageSubmissionSendError {
     ThreadNotFound {},
     #[error("New threads are outside the configured cutoff.")]
     OutsideCutoff {},
-    #[error("Thread storage task failed.")]
+    #[error("Message submission task failed.")]
     JoinFailed { source: JoinError },
     #[error("Could not read the saved thread.")]
     RecordFailed { source: ThreadStoreRecordError },
     #[error("Could not connect to the Codex server.")]
     ConnectFailed { source: CodexAppServerConnectError },
+    #[error("This thread cannot accept direct input.")]
+    ReadOnly {},
+    #[error("Missing queued message ID.")]
+    QueueIdMissing {},
+    #[error("Could not change the queued message.")]
+    ChangeQueueFailed { source: CodexSyncChangeQueueError },
     #[error("Could not submit the message.")]
     SendFailed { source: CodexSyncSendError },
 }
@@ -107,8 +160,12 @@ impl MessageSubmissionSendError {
     fn status(&self) -> StatusCode {
         use MessageSubmissionSendError::*;
         match self {
+            ChangeQueueFailed {
+                source,
+            } => source.status(),
+            ReadOnly {} => StatusCode::CONFLICT,
             FormKeyInvalid {} => StatusCode::FORBIDDEN,
-            MessageEmpty {} | OutsideCutoff {} => StatusCode::UNPROCESSABLE_ENTITY,
+            MessageEmpty {} | OutsideCutoff {} | QueueIdMissing {} => StatusCode::UNPROCESSABLE_ENTITY,
             SourceNotFound {} | ThreadNotFound {} => StatusCode::NOT_FOUND,
             RecordFailed {
                 ..

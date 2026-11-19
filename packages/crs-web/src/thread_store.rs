@@ -1,7 +1,9 @@
-use crate::{Config, ThreadHistory, ThreadHistoryIntoVisibleTurnsError, ThreadPage, ThreadRecord, ThreadSummary, canonical_json, turn_versions};
+use crate::{Config, PendingSteer, QueuedMessage, ThreadHistory, ThreadHistoryIntoVisibleTurnsError, ThreadPage, ThreadRecord, ThreadSummary, canonical_json, turn_versions};
+use codex_app_server_protocol::ThreadItemPayload;
 use errgonomic::{handle, handle_opt};
 use fjall::{Database, Keyspace, KeyspaceCreateOptions, PersistMode, Readable, Snapshot};
 use std::cmp::Reverse;
+use std::collections::HashSet;
 use thiserror::Error;
 
 #[derive(Clone)]
@@ -9,6 +11,7 @@ pub struct ThreadStore {
     db: Database,
     records: Keyspace,
     histories: Keyspace,
+    steers: Keyspace,
 }
 
 impl ThreadStore {
@@ -16,11 +19,52 @@ impl ThreadStore {
         use ThreadStoreOpenError::*;
         let records = handle!(db.keyspace("thread_records", KeyspaceCreateOptions::default), OpenRecordsFailed);
         let histories = handle!(db.keyspace("thread_histories", KeyspaceCreateOptions::default), OpenHistoriesFailed);
+        let steers = handle!(db.keyspace("pending_steers", KeyspaceCreateOptions::default), OpenSteersFailed);
         Ok(Self {
+            steers,
             db: db.clone(),
             records,
             histories,
         })
+    }
+
+    pub fn save_steer(&self, source: &str, thread_id: &str, client_id: &str, steer: Option<&PendingSteer>) -> Result<(), ThreadStoreSaveSteerError> {
+        use ThreadStoreSaveSteerError::*;
+        let key = format!("{source}\0{thread_id}\0{client_id}");
+        let mut batch = self.db.batch().durability(Some(PersistMode::SyncAll));
+        match steer {
+            Some(steer) => batch.insert(&self.steers, key, handle!(serde_json::to_vec(steer), EncodeFailed)),
+            None => batch.remove(&self.steers, key),
+        }
+        handle!(batch.commit(), CommitFailed);
+        Ok(())
+    }
+
+    pub fn steering_in_progress(&self, source: &str, thread_id: &str, client_id: &str, queue_id: &str) -> Result<bool, ThreadStoreSteeringInProgressError> {
+        use ThreadStoreSteeringInProgressError::*;
+        let key = format!("{source}\0{thread_id}\0{client_id}");
+        let Some(bytes) = handle!(self.steers.get(key), ReadFailed) else {
+            return Ok(false);
+        };
+        let record: PendingSteer = handle!(serde_json::from_slice(&bytes), DecodeFailed);
+        Ok(record.item.id == queue_id)
+    }
+
+    pub fn queue_previews(&self, source: &str, id: &str, mut messages: Vec<QueuedMessage>) -> Result<Vec<QueuedMessage>, ThreadStoreQueuePreviewsError> {
+        use ThreadStoreQueuePreviewsError::*;
+        for guard in self.steers.prefix(format!("{source}\0{id}\0")) {
+            let (key, bytes) = handle!(guard.into_inner(), ReadFailed);
+            let steer: PendingSteer = handle!(serde_json::from_slice(&bytes), DecodeFailed);
+            match messages
+                .iter_mut()
+                .find(|item| item.client_id == steer.item.client_user_message_id)
+            {
+                Some(item) if item.id != steer.item.id => handle!(self.steers.remove(key), RemoveFailed),
+                Some(item) => *item = handle!(QueuedMessage::try_from(&steer), EncodeFailed),
+                None => messages.push(handle!(QueuedMessage::try_from(&steer), EncodeFailed)),
+            }
+        }
+        Ok(messages)
     }
 
     pub fn write(&self, server_id: &str, mut record: ThreadRecord, history: ThreadHistory) -> Result<bool, ThreadStoreWriteError> {
@@ -34,17 +78,38 @@ impl ThreadStore {
         let record = handle!(canonical_json(&record).and_then(|json| serde_json::to_vec(&json)), EncodeRecordFailed, server_id, thread_id);
         let old_record = handle!(self.records.get(&key), GetRecordFailed, server_id, thread_id);
         let changed = old_record.as_deref() != Some(record.as_slice());
-        if !changed {
+        let prefix = format!("{key}\0");
+        let mut pending = HashSet::new();
+        for guard in self.steers.prefix(&prefix) {
+            pending.insert(handle!(guard.key(), ReadSteerFailed, server_id, thread_id));
+        }
+        let mut batch = self.db.batch().durability(Some(PersistMode::SyncData));
+        let mut settled = false;
+        if !pending.is_empty() {
+            for item in turns.iter().flat_map(|turn| &turn.items) {
+                if let ThreadItemPayload::UserMessage {
+                    client_id: Some(client_id),
+                    ..
+                } = &item.payload
+                {
+                    let key = format!("{prefix}{client_id}");
+                    if pending.contains(key.as_bytes()) {
+                        batch.remove(&self.steers, key);
+                        settled = true;
+                    }
+                }
+            }
+        }
+        if !changed && !settled {
             let old_history = handle!(self.histories.get(&key), GetHistoryFailed, server_id, thread_id);
             if old_history.as_deref() == Some(bytes.as_slice()) {
                 return Ok(false);
             }
         }
-        let mut batch = self.db.batch().durability(Some(PersistMode::SyncData));
         batch.insert(&self.records, key.as_bytes(), record);
         batch.insert(&self.histories, key, bytes);
         handle!(batch.commit(), CommitFailed, server_id, thread_id);
-        Ok(changed)
+        Ok(changed || settled)
     }
 
     pub fn record(&self, snapshot: &Snapshot, config: &Config, source: &str, id: &str) -> Result<Option<ThreadRecord>, ThreadStoreRecordError> {
@@ -125,6 +190,8 @@ impl ThreadStore {
 
 #[derive(Error, Debug)]
 pub enum ThreadStoreOpenError {
+    #[error("failed to open steering recovery storage")]
+    OpenSteersFailed { source: fjall::Error },
     #[error("failed to open the Codex thread records")]
     OpenRecordsFailed { source: fjall::Error },
     #[error("failed to open the Codex thread histories")]
@@ -133,6 +200,8 @@ pub enum ThreadStoreOpenError {
 
 #[derive(Error, Debug)]
 pub enum ThreadStoreWriteError {
+    #[error("failed to read steering recovery for thread '{thread_id}' from '{server_id}'")]
+    ReadSteerFailed { source: fjall::Error, server_id: String, thread_id: String },
     #[error("failed to resolve turns for Codex thread '{thread_id}' from '{server_id}'")]
     IntoVisibleTurnsFailed { source: ThreadHistoryIntoVisibleTurnsError, server_id: String, thread_id: String },
     #[error("failed to fingerprint turns for Codex thread '{thread_id}' from '{server_id}'")]
@@ -191,4 +260,32 @@ pub enum ThreadStorePageError {
     HistoryNotFound {},
     #[error("failed to decode the saved thread history")]
     DecodeHistoryFailed { source: serde_json::Error },
+}
+
+#[derive(Error, Debug)]
+pub enum ThreadStoreSaveSteerError {
+    #[error("failed to encode the original queued input")]
+    EncodeFailed { source: serde_json::Error },
+    #[error("failed to persist the steering receipt")]
+    CommitFailed { source: fjall::Error },
+}
+
+#[derive(Error, Debug)]
+pub enum ThreadStoreQueuePreviewsError {
+    #[error("failed to read steering receipts")]
+    ReadFailed { source: fjall::Error },
+    #[error("failed to decode a steering receipt")]
+    DecodeFailed { source: serde_json::Error },
+    #[error("failed to encode original queued input")]
+    EncodeFailed { source: serde_json::Error },
+    #[error("failed to retire a restored steering receipt")]
+    RemoveFailed { source: fjall::Error },
+}
+
+#[derive(Error, Debug)]
+pub enum ThreadStoreSteeringInProgressError {
+    #[error("failed to read steering receipt")]
+    ReadFailed { source: fjall::Error },
+    #[error("failed to decode steering receipt")]
+    DecodeFailed { source: serde_json::Error },
 }

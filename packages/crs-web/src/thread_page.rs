@@ -1,4 +1,4 @@
-use crate::{ChatMessage, Config, Disclosure, MessageForm, PageNav, ThreadHeader, ThreadRecord, ThreadStore, UrlSegment, page_error, thread_item_view, turn_anchor};
+use crate::{Config, Disclosure, MessageForm, PageNav, QueuePanel, ThreadHeader, ThreadRecord, ThreadStore, UrlSegment, page_error, thread_item_view, turn_anchor};
 use codex_app_server_protocol::Turn;
 use dioxus::prelude::*;
 use errgonomic::{ErrorDisplayer, handle};
@@ -37,9 +37,7 @@ impl ThreadPage {
             div { id: "turns", "data-source": source, "data-thread": record.thread.id.as_str(),
                 {turns.into_iter().map(|(_, turn)| turn)}
             }
-            div { id: "pending-messages", template {
-                ChatMessage { speaker: "User", div { class: "user-bubble ms-auto box-border w-fit max-w-full whitespace-pre-wrap rounded-3xl bg-neutral-800 px-4 py-2.5 text-white scheme-dark" } }
-            } }
+            QueuePanel {}
             MessageForm { source: source.to_owned(), thread_id: record.thread.id.clone(), writable: header.writable }
         })
     }
@@ -64,7 +62,7 @@ pub fn render_turns(history: Vec<Turn>, versions: &[String], known: &[String]) -
         turns.push((
             index,
             rsx! {
-                section { id: turn_anchor(&turn.id), "data-version": version.as_str(),
+                section { id: turn_anchor(&turn.id), "data-turn-id": turn.id.as_str(), "data-in-progress": (turn.status == codex_app_server_protocol::TurnStatus::InProgress).to_string(), "data-version": version.as_str(),
                     h2 { "Turn {number}" }
                     if let Some(error) = &turn.error { p { role: "alert", "{error.message}" } }
                     Disclosure { label: rsx! { "Turn details · {turn.status:?}" }, pre { "{metadata:#}" } }
