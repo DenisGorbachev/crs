@@ -20,14 +20,14 @@ pub struct MessageSubmission {
 
 pub async fn submit_message(Extension(server): Extension<SharedServer>, headers: HeaderMap, Form(form): Form<MessageSubmission>) -> Response {
     match form.send(server).await {
-        Ok(route)
+        Ok((_, message_id))
             if headers
                 .get(ACCEPT)
                 .is_some_and(|header| header == "application/json") =>
         {
-            Json(route.to_string()).into_response()
+            Json(message_id).into_response()
         }
-        Ok(route) => Redirect::to(&route.to_string()).into_response(),
+        Ok((route, _)) => Redirect::to(&route.to_string()).into_response(),
         Err(error) => {
             let status = error.status();
             if status.is_server_error() {
@@ -39,7 +39,7 @@ pub async fn submit_message(Extension(server): Extension<SharedServer>, headers:
 }
 
 impl MessageSubmission {
-    pub async fn send(self, server: SharedServer) -> Result<Route, MessageSubmissionSendError> {
+    pub async fn send(self, server: SharedServer) -> Result<(Route, String), MessageSubmissionSendError> {
         use MessageSubmissionSendError::*;
         let (sync, db) = {
             let server = server.lock().await;

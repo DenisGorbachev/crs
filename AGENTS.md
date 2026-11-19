@@ -2425,9 +2425,10 @@ codex-app-server-protocol.workspace = true
 codex-utils-absolute-path.workspace = true
 codex-utils-home-dir.workspace = true
 derive_more.workspace = true
-dioxus = { workspace = true, features = ["router", "document"] }
+dioxus = { workspace = true, features = ["router", "document", "ssr"] }
 errgonomic.workspace = true
 fjall.workspace = true
+futures.workspace = true
 pulldown-cmark.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
@@ -2545,6 +2546,14 @@ mod thread_store;
 pub use thread_store::*;
 mod thread_summary;
 pub use thread_summary::*;
+mod thread_updates;
+pub use thread_updates::*;
+mod thread_events;
+pub use thread_events::*;
+mod thread_controls;
+pub use thread_controls::*;
+mod thread_header;
+pub use thread_header::*;
 ```
 
 ### packages/crs-web/src/main.rs

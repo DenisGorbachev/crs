@@ -1,15 +1,14 @@
-use crate::{CodexConnection, CodexConnectionRequestError, CodexSync, Route, ThreadRecord, UrlSegment};
+use crate::{CodexConnection, CodexConnectionRequestError, CodexSync, Route, ThreadHistory, ThreadRecord, ThreadStoreRecordError, ThreadStoreWriteError, UrlSegment};
 use codex_app_server_protocol::{ClientRequest, RequestId, ThreadResumeParams, ThreadResumeResponse, ThreadStartParams, ThreadStartResponse, TurnStartParams, TurnStartResponse, UserInput};
-use errgonomic::{ErrorDisplayer, handle, handle_bool};
-use std::time::Duration;
+use errgonomic::{handle, handle_bool};
 use thiserror::Error;
-use tokio::time::timeout;
-use tracing::warn;
+use tokio::task::{JoinError, spawn_blocking};
 use uuid::Uuid;
 
 impl CodexSync {
-    pub async fn send(&self, client: &CodexConnection, record: Option<ThreadRecord>, message: String) -> Result<Route, CodexSyncSendError> {
+    pub async fn send(&self, client: &CodexConnection, record: Option<ThreadRecord>, message: String) -> Result<(Route, String), CodexSyncSendError> {
         use CodexSyncSendError::*;
+        let new_thread = record.is_none();
         let record = match record {
             Some(mut record) => {
                 let response = handle!(client.request::<ThreadResumeResponse>(ClientRequest::ThreadResume {
@@ -34,13 +33,31 @@ impl CodexSync {
                     archived: false,
                     read_state: None,
                     last_turn_id: None,
+                    turn_versions: None,
                     thread: response.thread,
                 }
             }
         };
-        let id = record.thread.id.as_str();
+        let id = record.thread.id.clone();
         handle_bool!(!self.config.includes_thread(record.thread.created_at), OutsideCutoff, id);
         handle_bool!(record.thread.can_accept_direct_input == Some(false), DirectInputUnavailable, id);
+        if new_thread {
+            let guard = self.lock_thread(&id).await;
+            let store = self.store.clone();
+            let config = self.config.clone();
+            let source = self.server_id.clone();
+            handle!(
+                spawn_blocking(move || {
+                    let _guard = guard;
+                    if handle!(store.record(&store.snapshot(), &config, &source, &record.thread.id), ReadNewThreadFailed).is_none() {
+                        handle!(store.write(&source, record, ThreadHistory::default()), SaveNewThreadFailed);
+                    }
+                    Ok(())
+                })
+                .await,
+                JoinFailed
+            )?;
+        }
         let message_id = Uuid::new_v4().to_string();
         let response = handle!(
             client
@@ -63,30 +80,19 @@ impl CodexSync {
         let source = UrlSegment {
             value: self.server_id.clone(),
         };
-        let id = id.to_owned();
-        let turn = response.turn.id;
         self.refresh.notify_one();
-        let refresh = self.save_thread(client, record, Some((&turn, &message_id)));
-        match timeout(Duration::from_secs(3), refresh).await {
-            Ok(Ok(())) => return Ok(Route::thread(source, id, Some(&turn))),
-            Ok(Err(error)) => warn!(server_id = self.server_id, %id, error = %ErrorDisplayer(&error), "accepted message awaits synchronization"),
-            Err(_) => warn!(server_id = self.server_id, %id, "accepted message awaits synchronization"),
-        }
-        let route = Route::MessageSent {
-            source,
-            id: UrlSegment {
-                value: id,
-            },
-            turn: UrlSegment {
-                value: turn,
-            },
-        };
-        Ok(route)
+        Ok((Route::thread(source, id, Some(&response.turn.id)), message_id))
     }
 }
 
 #[derive(Error, Debug)]
 pub enum CodexSyncSendError {
+    #[error("failed to check the new thread in local storage")]
+    ReadNewThreadFailed { source: ThreadStoreRecordError },
+    #[error("failed to store the new thread")]
+    SaveNewThreadFailed { source: ThreadStoreWriteError },
+    #[error("new thread storage task failed")]
+    JoinFailed { source: JoinError },
     #[error("Failed to start a Codex thread.")]
     StartThreadFailed { source: CodexConnectionRequestError },
     #[error("Failed to resume thread '{id}'.")]

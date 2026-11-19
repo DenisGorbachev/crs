@@ -5240,6 +5240,7 @@ dependencies = [
  "dioxus",
  "errgonomic 0.5.3 (git+https://github.com/DenisGorbachev/errgonomic)",
  "fjall",
+ "futures",
  "pulldown-cmark 0.13.4",
  "serde",
  "serde_json",

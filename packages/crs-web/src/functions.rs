@@ -8,3 +8,7 @@ mod code_ranges;
 pub use code_ranges::*;
 mod icon;
 pub use icon::*;
+mod content_version;
+pub use content_version::*;
+mod canonical_json;
+pub use canonical_json::*;

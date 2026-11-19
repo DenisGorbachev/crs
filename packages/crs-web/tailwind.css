@@ -18,19 +18,20 @@ textarea { box-sizing: border-box; width: 100%; resize: vertical; padding: .5rem
     @apply inline-flex size-8 shrink-0 cursor-pointer touch-manipulation items-center justify-center justify-self-start rounded-full border-0 p-0;
     background: transparent; color: inherit;
 }
-.icon-button:hover { background: color-mix(in srgb, CanvasText 9%, Canvas); }
+.controls nav .icon-button:hover { background: color-mix(in srgb, CanvasText 9%, Canvas); }
 .icon-button.primary, .icon-button[aria-pressed="true"] { color: Canvas; background: CanvasText; }
 .icon-button:disabled { opacity: .55; }
 [hidden] { display: none !important; }
-#thread-review { --nav-height: 3.25rem; --draft-height: 0px; padding-bottom: calc(2rem + var(--draft-height)); }
-#thread-review :is(section, article[data-response]) { scroll-margin-top: calc(var(--nav-height) + 8px); }
+#thread-review { --draft-height: 0px; padding-bottom: calc(2rem + var(--draft-height)); }
+#thread-review :is(section, article[data-response]) { scroll-margin-top: 8px; }
 article[aria-current="true"] { position: relative; }
 article[aria-current="true"]::before {
     content: ""; background: Highlight;
     @apply absolute -start-3 top-2 size-1.5 rounded-full;
 }
-.response-nav { background: Canvas; border-bottom: 1px solid color-mix(in srgb, CanvasText 18%, Canvas); }
-.item-details > summary, .command-item > summary { color: color-mix(in srgb, CanvasText 70%, Canvas); }
+form fieldset { min-width: 0; display: grid; gap: .25rem; padding: 0; margin: 0; border: 0; }
+.thread-draft:has(fieldset:disabled) .controls > :not(nav) { display: none; }
+.item-details > summary, .activity-item > summary { color: color-mix(in srgb, CanvasText 70%, Canvas); }
 [data-response="User"] { @apply ms-auto w-fit max-w-[85%]; }
 [data-response="User"] > .item-details > summary { text-align: end; }
 .user-bubble a { color: #bddeff; }
@@ -42,21 +43,20 @@ article[aria-current="true"]::before {
 .markdown th, .markdown td { padding: .35rem .6rem; border: 1px solid GrayText; }
 .markdown blockquote { border-inline-start: 2px solid GrayText; margin-inline: .5rem; padding-inline: .75rem; }
 .markdown pre { white-space: pre; overflow: auto; padding: .75rem; background: color-mix(in srgb, CanvasText 6%, Canvas); }
-#thread-review:is([data-quote-mode="once"], [data-quote-mode="persistent"]) .quote-chunk { cursor: pointer; }
-#thread-review:is([data-quote-mode="once"], [data-quote-mode="persistent"]) .quote-chunk:is(:hover, :focus-visible) { background: Highlight; color: HighlightText; }
+#thread-review:is([data-quote-mode="once"], [data-quote-mode="persistent"]) .quote-chunk:focus-visible { background: Highlight; color: HighlightText; }
 .has-draft .thread-draft {
     position: fixed; z-index: 20; bottom: 0; inset-inline: 0; box-sizing: border-box; max-width: 76ch;
     margin: 0 auto; background: Canvas; border-top: 1px solid GrayText; padding: .4rem 1rem max(.4rem, env(safe-area-inset-bottom));
     max-height: 45dvh; overflow: auto; gap: .25rem;
 }
-.quote-controls, .draft-actions { display: flex; align-items: center; flex-wrap: wrap; gap: .25rem .75rem; }
-.quote-controls label { margin-inline-start: auto; }
+.controls, .draft-actions { display: flex; align-items: center; flex-wrap: wrap; gap: .25rem .75rem; }
+.controls label { margin-inline-start: auto; }
 .has-draft textarea { height: 3rem; min-height: 2rem; max-height: 18dvh; resize: none; }
-.has-draft textarea:focus { height: 8rem; }
+.has-draft .thread-draft.editing textarea { height: 8rem; }
 .draft-actions [role="status"] { flex: 1; font-size: .875rem; }
 @media (max-width: 36rem) {
     main { margin-top: .5rem; }
     .has-draft .thread-draft { padding-inline: .6rem; }
-    .quote-controls { font-size: .875rem; }
-    .quote-controls small { max-width: 14ch; }
+    .controls { font-size: .875rem; }
+    .controls small { max-width: 14ch; }
 }

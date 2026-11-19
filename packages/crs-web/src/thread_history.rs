@@ -1,12 +1,12 @@
-use crate::{CodexConnection, FetchPagesError, fetch_pages};
-use codex_app_server_protocol::{ClientRequest, RequestId, SortDirection, Thread, ThreadHistoryMode, ThreadItemEntry, ThreadItemPayload, ThreadItemsListCursor, ThreadItemsListParams, ThreadItemsListResponse, ThreadTurnsListParams, ThreadTurnsListResponse, Turn, TurnItemsView};
-use errgonomic::{handle, handle_bool};
+use crate::{CodexConnection, FetchPagesError, canonical_json, content_version, fetch_pages};
+use codex_app_server_protocol::{ClientRequest, RequestId, SortDirection, Thread, ThreadHistoryMode, ThreadItem, ThreadItemEntry, ThreadItemPayload, ThreadItemsListCursor, ThreadItemsListParams, ThreadItemsListResponse, ThreadTurnsListParams, ThreadTurnsListResponse, Turn, TurnItemsView};
+use errgonomic::{handle, handle_bool, handle_opt};
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 use uuid::Uuid;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct ThreadHistory {
     pub turns: Vec<Turn>,
     pub items: Vec<ThreadItemEntry>,
@@ -17,20 +17,25 @@ impl ThreadHistory {
         self.turns.last().map(|turn| turn.id.as_str())
     }
 
-    pub fn contains_message(&self, turn_id: &str, message_id: &str) -> bool {
-        let embedded = self
-            .turns
-            .iter()
-            .filter(|turn| turn.id == turn_id)
-            .flat_map(|turn| &turn.items);
-        let paginated = self
-            .items
-            .iter()
-            .filter(|entry| entry.turn_id == turn_id)
-            .map(|entry| &entry.item);
-        embedded
-            .chain(paginated)
-            .any(|item| matches!(&item.payload, ThreadItemPayload::UserMessage { client_id: Some(id), .. } if id == message_id))
+    pub fn into_visible_turns(self) -> Result<Vec<Turn>, ThreadHistoryIntoVisibleTurnsError> {
+        use ThreadHistoryIntoVisibleTurnsError::*;
+        let Self {
+            mut turns,
+            items,
+        } = self;
+        let mut by_id: HashMap<_, _> = turns
+            .iter_mut()
+            .map(|turn| (turn.id.as_str(), &mut turn.items))
+            .collect();
+        for entry in items {
+            let dest = handle_opt!(by_id.get_mut(entry.turn_id.as_str()), TurnNotFound, id: entry.turn_id);
+            dest.push(handle!(ThreadItem::try_from(entry), DeferredOutputInvalid));
+        }
+        for turn in &mut turns {
+            turn.items
+                .retain(|item| !matches!(item.payload, ThreadItemPayload::Reasoning { .. }));
+        }
+        Ok(turns)
     }
 
     pub async fn fetch(client: &CodexConnection, thread: &Thread) -> Result<Self, ThreadHistoryFetchError> {
@@ -99,6 +104,21 @@ impl ThreadHistory {
             items,
         })
     }
+}
+
+pub fn turn_versions(turns: &[Turn]) -> Result<Vec<String>, serde_json::Error> {
+    turns
+        .iter()
+        .map(|turn| canonical_json(turn).map(|json| content_version(&json)))
+        .collect()
+}
+
+#[derive(Error, Debug)]
+pub enum ThreadHistoryIntoVisibleTurnsError {
+    #[error("saved thread contains deferred item output")]
+    DeferredOutputInvalid { source: codex_app_server_protocol::DeferredItemOutput },
+    #[error("saved item refers to missing turn '{id}'")]
+    TurnNotFound { id: String },
 }
 
 #[derive(Error, Debug)]

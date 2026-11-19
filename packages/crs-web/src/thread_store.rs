@@ -1,4 +1,4 @@
-use crate::{Config, ThreadHistory, ThreadPage, ThreadRecord, ThreadSummary};
+use crate::{Config, ThreadHistory, ThreadHistoryIntoVisibleTurnsError, ThreadPage, ThreadRecord, ThreadSummary, canonical_json, turn_versions};
 use errgonomic::{handle, handle_opt};
 use fjall::{Database, Keyspace, KeyspaceCreateOptions, PersistMode, Readable, Snapshot};
 use std::cmp::Reverse;
@@ -23,25 +23,28 @@ impl ThreadStore {
         })
     }
 
-    pub fn write(&self, server_id: &str, mut record: ThreadRecord, history: ThreadHistory) -> Result<(), ThreadStoreWriteError> {
+    pub fn write(&self, server_id: &str, mut record: ThreadRecord, history: ThreadHistory) -> Result<bool, ThreadStoreWriteError> {
         use ThreadStoreWriteError::*;
         record.last_turn_id = history.last_turn_id().map(str::to_owned);
         let thread_id = record.thread.id.as_str();
+        let bytes = handle!(canonical_json(&history).and_then(|json| serde_json::to_vec(&json)), EncodeHistoryFailed, server_id, thread_id);
+        let turns = handle!(history.into_visible_turns(), IntoVisibleTurnsFailed, server_id, thread_id);
+        record.turn_versions = Some(handle!(turn_versions(&turns), EncodeVersionsFailed, server_id, thread_id));
         let key = format!("{server_id}\0{thread_id}");
-        let record = handle!(serde_json::to_vec(&record), EncodeRecordFailed, server_id, thread_id);
-        let history = handle!(serde_json::to_vec(&history), EncodeHistoryFailed, server_id, thread_id);
+        let record = handle!(canonical_json(&record).and_then(|json| serde_json::to_vec(&json)), EncodeRecordFailed, server_id, thread_id);
         let old_record = handle!(self.records.get(&key), GetRecordFailed, server_id, thread_id);
-        if old_record.as_deref() == Some(record.as_slice()) {
+        let changed = old_record.as_deref() != Some(record.as_slice());
+        if !changed {
             let old_history = handle!(self.histories.get(&key), GetHistoryFailed, server_id, thread_id);
-            if old_history.as_deref() == Some(history.as_slice()) {
-                return Ok(());
+            if old_history.as_deref() == Some(bytes.as_slice()) {
+                return Ok(false);
             }
         }
         let mut batch = self.db.batch().durability(Some(PersistMode::SyncData));
         batch.insert(&self.records, key.as_bytes(), record);
-        batch.insert(&self.histories, key, history);
+        batch.insert(&self.histories, key, bytes);
         handle!(batch.commit(), CommitFailed, server_id, thread_id);
-        Ok(())
+        Ok(changed)
     }
 
     pub fn record(&self, snapshot: &Snapshot, config: &Config, source: &str, id: &str) -> Result<Option<ThreadRecord>, ThreadStoreRecordError> {
@@ -65,13 +68,29 @@ impl ThreadStore {
         let Some(record) = handle!(self.record(&snapshot, config, source, id), RecordFailed) else {
             return Ok(None);
         };
+        Ok(Some(handle!(self.page(&snapshot, source, record), PageFailed)))
+    }
+
+    pub fn snapshot(&self) -> Snapshot {
+        self.db.snapshot()
+    }
+
+    pub fn page(&self, snapshot: &Snapshot, source: &str, mut record: ThreadRecord) -> Result<ThreadPage, ThreadStorePageError> {
+        use ThreadStorePageError::*;
+        let id = &record.thread.id;
         let key = format!("{source}\0{id}");
         let bytes = handle_opt!(handle!(snapshot.get(&self.histories, &key), GetHistoryFailed), HistoryNotFound);
-        let history = handle!(serde_json::from_slice(&bytes), DecodeHistoryFailed);
-        Ok(Some(ThreadPage {
+        let history: ThreadHistory = handle!(serde_json::from_slice(&bytes), DecodeHistoryFailed);
+        let turns = handle!(history.into_visible_turns(), IntoVisibleTurnsFailed);
+        let versions = match record.turn_versions.take() {
+            Some(versions) => versions,
+            None => handle!(turn_versions(&turns), EncodeVersionsFailed),
+        };
+        Ok(ThreadPage {
+            versions,
             record,
-            history,
-        }))
+            turns,
+        })
     }
 
     pub fn list<'a>(&self, config: &Config, sources: impl IntoIterator<Item = &'a str>) -> Result<Vec<ThreadSummary>, ThreadStoreListError> {
@@ -114,6 +133,10 @@ pub enum ThreadStoreOpenError {
 
 #[derive(Error, Debug)]
 pub enum ThreadStoreWriteError {
+    #[error("failed to resolve turns for Codex thread '{thread_id}' from '{server_id}'")]
+    IntoVisibleTurnsFailed { source: ThreadHistoryIntoVisibleTurnsError, server_id: String, thread_id: String },
+    #[error("failed to fingerprint turns for Codex thread '{thread_id}' from '{server_id}'")]
+    EncodeVersionsFailed { source: serde_json::Error, server_id: String, thread_id: String },
     #[error("failed to encode record for Codex thread '{thread_id}' from '{server_id}'")]
     EncodeRecordFailed { source: serde_json::Error, server_id: String, thread_id: String },
     #[error("failed to encode history for Codex thread '{thread_id}' from '{server_id}'")]
@@ -152,6 +175,16 @@ pub enum ThreadStoreRecordError {
 pub enum ThreadStoreReadError {
     #[error("failed to read the saved thread record")]
     RecordFailed { source: ThreadStoreRecordError },
+    #[error("failed to load the saved thread page")]
+    PageFailed { source: ThreadStorePageError },
+}
+
+#[derive(Error, Debug)]
+pub enum ThreadStorePageError {
+    #[error("failed to resolve saved thread turns")]
+    IntoVisibleTurnsFailed { source: ThreadHistoryIntoVisibleTurnsError },
+    #[error("failed to fingerprint saved turns")]
+    EncodeVersionsFailed { source: serde_json::Error },
     #[error("failed to read the saved thread history")]
     GetHistoryFailed { source: fjall::Error },
     #[error("saved thread record has no history")]

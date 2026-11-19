@@ -1,8 +1,7 @@
-use crate::{Config, MessageForm, Route, ThreadHistory, ThreadRecord, ThreadStore, UrlSegment, icon, page_error, thread_item_view, turn_anchor};
-use codex_app_server_protocol::{ThreadItem, ThreadItemPayload};
+use crate::{Config, MessageForm, Route, ThreadHeader, ThreadRecord, ThreadStore, UrlSegment, page_error, thread_item_view, turn_anchor};
+use codex_app_server_protocol::Turn;
 use dioxus::prelude::*;
 use errgonomic::{ErrorDisplayer, handle};
-use std::collections::HashMap;
 use std::mem::take;
 use std::sync::Arc;
 use thiserror::Error;
@@ -10,72 +9,79 @@ use tokio::task::spawn_blocking;
 use tracing::error;
 
 pub struct ThreadPage {
+    pub versions: Vec<String>,
     pub record: ThreadRecord,
-    pub history: ThreadHistory,
+    pub turns: Vec<Turn>,
 }
 
 impl ThreadPage {
     pub fn render(self, source: &str) -> Result<Element, ThreadPageRenderError> {
         use ThreadPageRenderError::*;
         let Self {
+            versions,
             mut record,
-            history,
+            turns,
         } = self;
-        let mut entries = HashMap::<_, Vec<_>>::new();
-        for entry in history.items {
-            let id = entry.turn_id.clone();
-            entries
-                .entry(id)
-                .or_default()
-                .push(handle!(ThreadItem::try_from(entry), DeferredOutputInvalid));
+        let turns = handle!(render_turns(turns, &versions, &[]), RenderTurnsFailed);
+        let has_turns = !turns.is_empty();
+        record.thread.turns.clear();
+        let header = handle!(ThreadHeader::try_from(&record), EncodeRecordFailed);
+        let title = &header.title;
+        Ok(rsx! {
+            document::Title { "{title} · CRS-Web" }
+            h1 { id: "thread-title", "{title}" }
+            p { code { "{record.thread.id}" } span { id: "archive-state", hidden: !header.archived, " · Archived" } }
+            details { summary { "Thread details" } pre { id: "thread-metadata", "data-version": header.version, "{header.metadata}" } }
+            p { id: "update-status", role: "status", hidden: true, "Live updates paused. Retrying…" }
+            p { id: "empty-transcript", hidden: has_turns, "No turns in this thread." }
+            div { id: "turns", "data-source": source, "data-thread": record.thread.id.as_str(),
+                {turns.into_iter().map(|(_, turn)| turn)}
+            }
+            div { id: "pending-messages", template {
+                article { class: "my-5", "data-response": "User", aria_label: "User", div { class: "user-bubble ms-auto box-border w-fit max-w-full whitespace-pre-wrap rounded-3xl bg-neutral-800 px-4 py-2.5 text-white scheme-dark" } }
+            } }
+            MessageForm { source: source.to_owned(), thread_id: record.thread.id.clone(), writable: header.writable }
+        })
+    }
+}
+
+pub fn render_turns(history: Vec<Turn>, versions: &[String], known: &[String]) -> Result<Vec<(usize, Element)>, RenderTurnsError> {
+    use RenderTurnsError::*;
+    let mut turns = Vec::new();
+    for (number, ((index, mut turn), version)) in (1usize..).zip(history.into_iter().enumerate().zip(versions)) {
+        if known.get(index) == Some(version) {
+            continue;
         }
-        let mut turns = Vec::with_capacity(history.turns.len());
-        for (number, mut turn) in (1usize..).zip(history.turns) {
-            let items = take(&mut turn.items)
-                .into_iter()
-                .chain(entries.remove(&turn.id).into_iter().flatten())
-                .filter(|item| !matches!(item.payload, ThreadItemPayload::Reasoning { .. }));
-            let mut transcript = Vec::new();
-            for item in items {
-                transcript.push(thread_item_view(handle!(serde_json::to_value(item), EncodeItemFailed)));
-            }
-            let mut metadata = handle!(serde_json::to_value(&turn), EncodeTurnFailed);
-            if let Some(fields) = metadata.as_object_mut() {
-                fields.remove("items");
-            }
-            turns.push(rsx! {
-                section { id: turn_anchor(&turn.id),
+
+        let mut transcript = Vec::new();
+        for item in take(&mut turn.items) {
+            transcript.push(thread_item_view(handle!(serde_json::to_value(item), EncodeItemFailed)));
+        }
+        let mut metadata = handle!(serde_json::to_value(&turn), EncodeTurnFailed);
+        if let Some(fields) = metadata.as_object_mut() {
+            fields.remove("items");
+        }
+        turns.push((
+            index,
+            rsx! {
+                section { id: turn_anchor(&turn.id), "data-version": version.as_str(),
                     h2 { "Turn {number}" }
                     if let Some(error) = &turn.error { p { role: "alert", "{error.message}" } }
                     details { summary { "Turn details · {turn.status:?}" } pre { "{metadata:#}" } }
                     if transcript.is_empty() { p { "No visible items in this turn." } }
                     {transcript.into_iter()}
                 }
-            });
-        }
-        record.thread.turns.clear();
-        let metadata = handle!(serde_json::to_string_pretty(&record), EncodeRecordFailed);
-        let title = record.title();
-        Ok(rsx! {
-            document::Title { "{title} · CRS-Web" }
-            h1 { "{title}" }
-            p { code { "{record.thread.id}" } if record.archived { " · Archived" } }
-            details { summary { "Thread details" } pre { "{metadata}" } }
-            if turns.is_empty() { p { "No turns in this thread." } }
-            {turns.into_iter()}
-            if record.thread.can_accept_direct_input == Some(false) {
-                p { "This thread does not accept direct messages." }
-            } else {
-                MessageForm { source: source.to_owned(), thread_id: record.thread.id.clone() }
-            }
-        })
+            },
+        ));
     }
+    Ok(turns)
 }
 
 #[component]
 pub fn ThreadView(source: ReadSignal<UrlSegment>, id: ReadSignal<UrlSegment>, anchor: String) -> Element {
     let store = use_context::<ThreadStore>();
     let config = use_context::<Arc<Config>>();
+    let poll_ms = config.thread_refresh_interval().as_millis();
     let page = use_resource(move || {
         let store = store.clone();
         let config = config.clone();
@@ -106,22 +112,12 @@ pub fn ThreadView(source: ReadSignal<UrlSegment>, id: ReadSignal<UrlSegment>, an
     if *status != StatusCode::OK {
         page_error(*status);
     }
-    rsx! { main { id: "thread-review",
+    rsx! { main { id: "thread-review", "data-poll-ms": "{poll_ms}",
         nav {
             Link { to: Route::Home {}, "Servers" }
             " / "
             Link { to: Route::Server { source: source() }, "{source().value}" }
         }
-        if *status == StatusCode::OK { nav { class: "response-nav sticky top-0 z-10 flex gap-1 py-1", aria_label: "Message navigation", hidden: true,
-            for (action, label, path) in [
-                ("first", "Beginning", "M5 4h14M6 14l6-6 6 6M12 8v12"),
-                ("previous", "Previous message", "m6 15 6-6 6 6"),
-                ("next", "Next message", "m6 9 6 6 6-6"),
-                ("last", "End", "M5 20h14M6 10l6 6 6-6M12 16V4"),
-            ] {
-                button { class: "icon-button", r#type: "button", "data-go": action, aria_label: label, title: label, {icon(path)} }
-            }
-        } }
         {content.clone()}
         if *status == StatusCode::OK { script { r#type: "module", src: "/thread-review.js" } }
     } }
@@ -129,12 +125,16 @@ pub fn ThreadView(source: ReadSignal<UrlSegment>, id: ReadSignal<UrlSegment>, an
 
 #[derive(Error, Debug)]
 pub enum ThreadPageRenderError {
-    #[error("saved thread contains deferred item output")]
-    DeferredOutputInvalid { source: codex_app_server_protocol::DeferredItemOutput },
+    #[error("failed to render thread turns")]
+    RenderTurnsFailed { source: RenderTurnsError },
+    #[error("failed to encode thread metadata")]
+    EncodeRecordFailed { source: serde_json::Error },
+}
+
+#[derive(Error, Debug)]
+pub enum RenderTurnsError {
     #[error("failed to encode thread item")]
     EncodeItemFailed { source: serde_json::Error },
     #[error("failed to encode turn metadata")]
     EncodeTurnFailed { source: serde_json::Error },
-    #[error("failed to encode thread metadata")]
-    EncodeRecordFailed { source: serde_json::Error },
 }

@@ -1,4 +1,4 @@
-use crate::{App, Server, ServerOpenError, SharedServer, submit_message};
+use crate::{App, Server, ServerOpenError, SharedServer, submit_message, thread_events, thread_updates};
 use axum::http::header::CONTENT_TYPE;
 use axum::routing::{get, post};
 use axum::{Extension, Router, serve};
@@ -34,7 +34,10 @@ impl Command {
         let sources: Vec<_> = server.sources.values().cloned().collect();
         let form_key = server.form_key;
         let server: SharedServer = Arc::new(Mutex::new(server));
+        let (shutdown, receiver) = watch::channel(());
         let router = Router::new()
+            .route("/api/thread-events", get(thread_events))
+            .route("/api/thread-updates", post(thread_updates))
             .route("/messages", post(submit_message))
             .route("/thread-review.js", get(async || ([(CONTENT_TYPE, "text/javascript; charset=utf-8")], include_str!("thread_review.js"))))
             .serve_api_application(
@@ -44,10 +47,10 @@ impl Command {
                     .context(store.clone()),
                 App,
             )
-            .layer(Extension(server));
+            .layer(Extension(server))
+            .layer(Extension(receiver.clone()));
         let address = fullstack_address_or_localhost();
         let listener = handle!(TcpListener::bind(address).await, BindFailed, address);
-        let (shutdown, receiver) = watch::channel(());
         let mut workers = JoinSet::new();
         sources.into_iter().for_each(|source| {
             workers.spawn(source.run(receiver.clone()));

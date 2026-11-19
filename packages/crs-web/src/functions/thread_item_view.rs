@@ -1,12 +1,29 @@
-use crate::markdown_view;
+use crate::{content_version, markdown_view};
 use dioxus::prelude::*;
 use serde_json::Value;
 use std::mem::take;
 
 pub fn thread_item_view(mut item: Value) -> Element {
+    let version = content_version(&item);
     let Some(fields) = item.as_object_mut() else { return structured_value(&item) };
+    let id = fields
+        .get("id")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_owned();
     let kind = fields.remove("type").unwrap_or_default();
-    let (heading, body) = match kind.as_str() {
+    let speaker = match kind.as_str() {
+        Some("userMessage") => Some("User"),
+        Some("agentMessage") => Some("Assistant"),
+        _ => None,
+    };
+    let preview = ["command", "query", "tool", "name", "path", "text"]
+        .into_iter()
+        .filter_map(|key| fields.get(key).and_then(Value::as_str))
+        .find_map(|value| value.trim().lines().next())
+        .unwrap_or_else(|| kind.as_str().unwrap_or("Item"))
+        .to_owned();
+    let body = match kind.as_str() {
         Some("userMessage") => {
             let content = fields.remove("content").unwrap_or_default();
             let inputs = content.as_array().into_iter().flatten().map(|input| {
@@ -30,40 +47,43 @@ pub fn thread_item_view(mut item: Value) -> Element {
                     structured_value(input)
                 }
             });
-            ("User", rsx! { div { class: "user-bubble ms-auto box-border w-fit max-w-full rounded-3xl bg-neutral-800 px-4 py-2.5 text-white scheme-dark", {inputs} } })
+            rsx! { div { class: "user-bubble ms-auto box-border w-fit max-w-full rounded-3xl bg-neutral-800 px-4 py-2.5 text-white scheme-dark", {inputs} } }
         }
-        Some(kind @ ("agentMessage" | "plan")) => {
+        Some("agentMessage" | "plan") => {
             let text = fields.remove("text").unwrap_or_default();
-            (if kind == "agentMessage" { "Assistant" } else { "Plan" }, markdown_view(text.as_str().unwrap_or_default()))
+            markdown_view(text.as_str().unwrap_or_default())
         }
         Some("commandExecution") => {
             let command = fields.remove("command").unwrap_or_default();
             let output = fields.remove("aggregatedOutput").unwrap_or_default();
             let command = command.as_str().unwrap_or_default();
-            let preview = command.trim_start().lines().next().unwrap_or("Command");
-            return rsx! { details { class: "command-item my-3",
-                summary { class: "list-inside truncate text-sm", code { "{preview}" } }
-                pre { code { "{command}" } }
-                if let Some(output) = output.as_str() { pre { "{output}" } }
-                {item_details(&item)}
-            } };
+            rsx! { pre { code { "{command}" } } if let Some(output) = output.as_str() { pre { "{output}" } } }
         }
-        kind => {
+        _ => {
             let mut payload = take(fields);
             for field in ["id", "startedAtMs", "completedAtMs"] {
                 if let Some(value) = payload.remove(field) {
                     fields.insert(field.into(), value);
                 }
             }
-            (kind.unwrap_or("Item"), structured_value(&Value::Object(payload)))
+            structured_value(&Value::Object(payload))
         }
     };
-    let speaker = matches!(kind.as_str(), Some("userMessage" | "agentMessage")).then_some(heading);
-    rsx! { article { class: "my-5", "data-response": speaker, aria_label: speaker,
-        if speaker.is_none() { h3 { "{heading}" } }
-        {body}
-        {item_details(&item)}
-    } }
+    if let Some(speaker) = speaker {
+        let client_id = item.get("clientId").and_then(Value::as_str);
+        rsx! { article { class: "my-5", "data-item": id, "data-version": version, "data-client-id": client_id, "data-response": speaker, aria_label: speaker,
+            {body}
+            {item_details(&item)}
+        } }
+    } else {
+        rsx! { details { class: "activity-item my-3", "data-item": id, "data-version": version,
+            summary { class: "list-inside truncate text-sm",
+                if kind == "commandExecution" { code { "{preview}" } } else { "{preview}" }
+            }
+            {body}
+            {item_details(&item)}
+        } }
+    }
 }
 
 fn item_details(item: &Value) -> Element {

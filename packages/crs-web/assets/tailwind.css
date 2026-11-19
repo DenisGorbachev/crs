@@ -20,15 +20,6 @@
   .static {
     position: static;
   }
-  .sticky {
-    position: sticky;
-  }
-  .top-0 {
-    top: calc(var(--spacing) * 0);
-  }
-  .z-10 {
-    z-index: 10;
-  }
   .my-3 {
     margin-block: calc(var(--spacing) * 3);
   }
@@ -80,9 +71,6 @@
   .px-4 {
     padding-inline: calc(var(--spacing) * 4);
   }
-  .py-1 {
-    padding-block: calc(var(--spacing) * 1);
-  }
   .py-2\.5 {
     padding-block: calc(var(--spacing) * 2.5);
   }
@@ -93,6 +81,9 @@
   .text-xs {
     font-size: var(--text-xs);
     line-height: var(--tw-leading, var(--text-xs--line-height));
+  }
+  .whitespace-pre-wrap {
+    white-space: pre-wrap;
   }
   .text-white {
     color: var(--color-white);
@@ -164,7 +155,7 @@ textarea {
   background: transparent;
   color: inherit;
 }
-.icon-button:hover {
+.controls nav .icon-button:hover {
   background: color-mix(in srgb, CanvasText 9%, Canvas);
 }
 .icon-button.primary, .icon-button[aria-pressed="true"] {
@@ -178,12 +169,11 @@ textarea {
   display: none !important;
 }
 #thread-review {
-  --nav-height: 3.25rem;
   --draft-height: 0px;
   padding-bottom: calc(2rem + var(--draft-height));
 }
 #thread-review :is(section, article[data-response]) {
-  scroll-margin-top: calc(var(--nav-height) + 8px);
+  scroll-margin-top: 8px;
 }
 article[aria-current="true"] {
   position: relative;
@@ -198,11 +188,18 @@ article[aria-current="true"]::before {
   height: calc(var(--spacing) * 1.5);
   border-radius: calc(infinity * 1px);
 }
-.response-nav {
-  background: Canvas;
-  border-bottom: 1px solid color-mix(in srgb, CanvasText 18%, Canvas);
+form fieldset {
+  min-width: 0;
+  display: grid;
+  gap: .25rem;
+  padding: 0;
+  margin: 0;
+  border: 0;
 }
-.item-details > summary, .command-item > summary {
+.thread-draft:has(fieldset:disabled) .controls > :not(nav) {
+  display: none;
+}
+.item-details > summary, .activity-item > summary {
   color: color-mix(in srgb, CanvasText 70%, Canvas);
 }
 [data-response="User"] {
@@ -246,10 +243,7 @@ article[aria-current="true"]::before {
   padding: .75rem;
   background: color-mix(in srgb, CanvasText 6%, Canvas);
 }
-#thread-review:is([data-quote-mode="once"], [data-quote-mode="persistent"]) .quote-chunk {
-  cursor: pointer;
-}
-#thread-review:is([data-quote-mode="once"], [data-quote-mode="persistent"]) .quote-chunk:is(:hover, :focus-visible) {
+#thread-review:is([data-quote-mode="once"], [data-quote-mode="persistent"]) .quote-chunk:focus-visible {
   background: Highlight;
   color: HighlightText;
 }
@@ -268,13 +262,13 @@ article[aria-current="true"]::before {
   overflow: auto;
   gap: .25rem;
 }
-.quote-controls, .draft-actions {
+.controls, .draft-actions {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: .25rem .75rem;
 }
-.quote-controls label {
+.controls label {
   margin-inline-start: auto;
 }
 .has-draft textarea {
@@ -283,7 +277,7 @@ article[aria-current="true"]::before {
   max-height: 18dvh;
   resize: none;
 }
-.has-draft textarea:focus {
+.has-draft .thread-draft.editing textarea {
   height: 8rem;
 }
 .draft-actions [role="status"] {
@@ -297,10 +291,10 @@ article[aria-current="true"]::before {
   .has-draft .thread-draft {
     padding-inline: .6rem;
   }
-  .quote-controls {
+  .controls {
     font-size: .875rem;
   }
-  .quote-controls small {
+  .controls small {
     max-width: 14ch;
   }
 }

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs::read_to_string;
 use std::io;
-use std::num::NonZeroU64;
+use std::num::{NonZeroU16, NonZeroU64};
 use std::path::PathBuf;
 use std::time::Duration;
 use thiserror::Error;
@@ -18,6 +18,8 @@ pub struct Config {
     pub db_path: PathBuf,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reconcile_interval_seconds: Option<NonZeroU64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thread_refresh_interval_seconds: Option<NonZeroU16>,
     pub codex_app_servers: BTreeMap<String, CodexAppServer>,
 }
 
@@ -50,6 +52,14 @@ impl Config {
 
     pub fn includes_thread(&self, created_at: i64) -> bool {
         OffsetDateTime::from_unix_timestamp(created_at).is_ok_and(|created_at| created_at >= self.threads_created_since)
+    }
+
+    pub fn thread_refresh_interval(&self) -> Duration {
+        Duration::from_secs(
+            self.thread_refresh_interval_seconds
+                .map_or(3, NonZeroU16::get)
+                .into(),
+        )
     }
 
     pub fn reconcile_interval(&self) -> Duration {

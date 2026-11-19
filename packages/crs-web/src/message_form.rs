@@ -1,9 +1,9 @@
-use crate::{Route, UrlSegment, icon};
+use crate::{ThreadControls, icon};
 use dioxus::prelude::*;
 use uuid::Uuid;
 
 #[component]
-pub fn MessageForm(source: String, thread_id: Option<String>) -> Element {
+pub fn MessageForm(source: String, thread_id: Option<String>, #[props(default = true)] writable: bool) -> Element {
     let form_key = use_context::<Uuid>();
     let existing = thread_id.is_some();
     let label = if existing { "Message" } else { "First message" };
@@ -13,28 +13,15 @@ pub fn MessageForm(source: String, thread_id: Option<String>) -> Element {
         input { r#type: "hidden", name: "source", value: source }
         if let Some(id) = thread_id {
             input { r#type: "hidden", name: "thread_id", value: id }
-            div { class: "quote-controls", hidden: true,
-                button { class: "icon-button", r#type: "button", id: "quote-mode", title: "Quote", aria_label: "Quote", aria_pressed: "false", aria_describedby: "quote-hint",
-                    {icon("M10 6H4v6h5c0 3-2 5-5 6m16-12h-6v6h5c0 3-2 5-5 6")}
-                }
-                small { id: "quote-hint" }
-                label { input { r#type: "checkbox", id: "quote-default" } " Quote by default" }
+            ThreadControls {}
+            p { id: "direct-input-notice", hidden: writable, "This thread does not accept direct messages." }
+        }
+        fieldset { disabled: !writable, hidden: !writable,
+            textarea { aria_label: label, id: "message", name: "message", rows: "5", required: true }
+            div { class: "draft-actions",
+                button { class: "icon-button primary", r#type: "submit", title: submit, aria_label: submit, {icon("m6 12 6-6 6 6M12 6v13")} }
+                span { role: "status", "aria-live": "polite" }
             }
         }
-        label { r#for: "message", "{label}" }
-        textarea { id: "message", name: "message", rows: "5", required: true }
-        div { class: "draft-actions",
-            button { class: "icon-button primary", r#type: "submit", title: submit, aria_label: submit, {icon("m6 12 6-6 6 6M12 6v13")} }
-            span { role: "status", "aria-live": "polite" }
-        }
-    } }
-}
-
-#[component]
-pub fn MessageSent(source: UrlSegment, id: UrlSegment, turn: UrlSegment) -> Element {
-    rsx! { main {
-        h1 { "Message sent" }
-        p { "Codex accepted your message. The saved history is catching up." }
-        Link { to: Route::thread(source, id.value, Some(&turn.value)), "Open thread" }
     } }
 }

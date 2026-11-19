@@ -62,7 +62,9 @@ Dioxus `Router<Route>` renders pages and typed `Link` components generate URLs. 
 - `/servers/<source>` lists top-level threads by most recent update. Exclude attached children and subagents, including subagents without a recorded parent ID. A standalone fork remains eligible. Each link targets `#turn-<id>` for the chronologically last turn, including an ongoing, failed or interrupted turn. A thread with no turns opens without a fragment.
 - `/servers/<source>/threads/<id>` displays synchronized turns and items in order, omitting reasoning items. Each turn has a stable HTML ID.
 
-Right-align user messages in dark bubbles with white text. Left-align assistant messages. Give both accessible speaker names. Each command expands from a single line to its full text, output and metadata. Use compact icon buttons with accessible names for navigation, quoting and submission.
+Right-align user messages in dark bubbles with white text. Left-align assistant messages. Give both accessible speaker names. Collapse every other visible item to one expandable line. A command shows its command line. A web search shows its query. Expansion reveals the full item and metadata. Use compact icon buttons with accessible names for navigation, quoting and submission.
+
+Visible thread tabs subscribe to Dioxus Server-Sent Events for their source and thread. On connection, reconnection and committed changes, fetch changed turns and thread metadata. Refresh open threads independently of backfill every `thread_refresh_interval_seconds` (default 3). During ongoing turns, display items and status changes as Codex makes them available in thread history. Update the transcript in place, preserve the draft and expanded commands, and follow new output when the reader is at the bottom.
 
 Unknown sources, missing threads and threads outside the cutoff return HTTP 404. `/api/threads` returns summaries across all configured servers.
 
@@ -70,12 +72,12 @@ Unknown sources, missing threads and threads outside the cutoff return HTTP 404.
 
 The server page accepts a first message for a new thread. The thread page accepts a follow-up when direct input is available. Both forms work with native HTML POST. Preserve nonblank message text and reject whitespace-only input.
 
-Use `thread/start` for a new thread or `thread/resume` with `excludeTurns` for an existing thread on its configured source. Submit one `turn/start` with a fresh client message ID and the server’s existing settings. Codex starts an idle turn or steers the active turn. After acknowledgement, redirect to the returned turn once the saved history contains the submitted client message ID. If synchronization takes longer, show a receipt with a thread link. Never retry input automatically.
+Use `thread/start` for a new thread or `thread/resume` with `excludeTurns` for an existing thread on its configured source. Submit one `turn/start` with a fresh client message ID and the server’s existing settings. Codex starts an idle turn or steers the active turn. Open a newly created thread directly. In an open thread, acknowledge the submission in place and reconcile its bubble by client message ID. Never retry input automatically.
 
 ## Quoting thread messages
 
-Keep one editable draft at the bottom of the thread. After appending a quotation, focus the textarea with the caret at the end. Save by source and thread in the browser until Codex acknowledges Send. Preserve conflicting edits in their respective tabs. The top bar jumps to either end or to the previous or next user or assistant response.
+Keep one editable draft at the bottom of the thread. After appending a quotation, focus the textarea with the caret at the end. Save by source and thread in the browser until Codex acknowledges Send. Preserve conflicting edits in their respective tabs. The composer controls jump to either end or to the previous or next user or assistant response. Read-only threads retain navigation.
 
-Tap **Quote** once to quote one chunk, twice quickly to keep quoting. Tap the active button to cancel. **Quote by default** opens threads in persistent selection mode. Links follow their destinations when selection is off.
+Pointer hover leaves quotable text and the quote control visually unchanged. Tap **Quote** once to quote one chunk, twice quickly to keep quoting. Tap the active button to cancel. **Quote by default** opens threads in persistent selection mode. Links follow their destinations when selection is off.
 
 Quote prose by sentence across inline formatting, within each paragraph, list item, heading or table cell. Prefix every line with `> `. Tapping inline code quotes that code span. In Rust, Python and JavaScript blocks, Tree-sitter selects identifiers or the construct introduced by a function, conditional or match keyword. Use line selection for unsupported languages or unresolved syntax. Preserve code inside a blockquoted fence longer than every backtick run in the selection. [Commenting design](https://chatgpt.com/share/6afd89c9-69a0-83ec-8c61-59a378ec9d61).
