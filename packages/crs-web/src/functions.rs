@@ -14,5 +14,3 @@ mod canonical_json;
 pub use canonical_json::*;
 mod load_form_key;
 pub use load_form_key::*;
-mod load_config;
-pub use load_config::*;

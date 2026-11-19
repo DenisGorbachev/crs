@@ -2511,7 +2511,7 @@ fn verify_cli() {
 ### packages/crs-web-spec/src/lib.rs
 
 ```rust
-#![doc = include_str!("../README.md")]
+
 ```
 
 ### packages/crs-web/src/lib.rs
