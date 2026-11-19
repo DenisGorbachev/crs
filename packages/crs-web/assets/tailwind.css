@@ -135,6 +135,11 @@
       border-width: 0;
     }
   }
+  .inert\:opacity-50 {
+    &:is([inert], [inert] *) {
+      opacity: 50%;
+    }
+  }
 }
 @layer components {
   html[data-theme="dark"] {

@@ -1,4 +1,7 @@
 db_path = "../../target/crs-web-local"
 
+[transcribe_params]
+languages = ["en"]
+
 [codex_app_servers.local]
 transport = "unix-socket"

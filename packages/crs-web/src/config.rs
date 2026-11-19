@@ -1,5 +1,6 @@
-use crate::CodexAppServer;
+use crate::{CodexAppServer, TranscribeParams};
 use errgonomic::{handle, handle_bool};
+use openai_dive::v1::resources::audio::AudioOutputFormat;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs::read_to_string;
@@ -16,6 +17,8 @@ pub struct Config {
     #[serde(default, with = "time::serde::rfc3339::option", skip_serializing_if = "Option::is_none")]
     pub threads_created_since: Option<OffsetDateTime>,
     pub db_path: PathBuf,
+    #[serde(default)]
+    pub transcribe_params: TranscribeParams,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub form_key_env: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -30,6 +33,15 @@ impl Config {
         use ConfigLoadError::*;
         let text = handle!(read_to_string(&path), ReadToStringFailed, path);
         let mut config: Self = handle!(toml::from_str(&text), FromStrFailed, path);
+        handle_bool!(!matches!(config.transcribe_params.response_format, None | Some(AudioOutputFormat::Json)), TranscriptionFormatInvalid, path);
+        handle_bool!(
+            config
+                .transcribe_params
+                .temperature
+                .is_some_and(|value| !(0.0..=1.0).contains(&value)),
+            TranscriptionTemperatureInvalid,
+            path
+        );
         handle_bool!(
             config
                 .codex_app_servers
@@ -72,6 +84,10 @@ impl Config {
 
 #[derive(Error, Debug)]
 pub enum ConfigLoadError {
+    #[error("transcribe_params.response_format must be 'json' for gpt-transcribe in '{}'", path.display())]
+    TranscriptionFormatInvalid { path: PathBuf },
+    #[error("transcribe_params.temperature must be between 0 and 1 in '{}'", path.display())]
+    TranscriptionTemperatureInvalid { path: PathBuf },
     #[error("failed to read CRS-Web configuration at '{}'", path.display())]
     ReadToStringFailed { source: io::Error, path: PathBuf },
     #[error("failed to parse CRS-Web configuration at '{}'", path.display())]

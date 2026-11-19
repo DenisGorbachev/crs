@@ -2264,6 +2264,9 @@ absolute_paths = "deny"
 arithmetic_side_effects = "deny"
 
 [workspace.dependencies]
+eventsource-stream = "0.2.0"
+openai_dive = { git = "https://github.com/DenisGorbachev/openai-dive", rev = "bd7a16dafb4657fd24ff449953b3415cf062ff16", default-features = false, features = ["reqwest", "rustls-tls"] }
+secrecy = "0.10.0"
 dioxus-primitives = { git = "https://github.com/DioxusLabs/components", rev = "9a758255ea26e2b20c8cecf4c1c946feb9e71da7" }
 derive_more = { version = "2.1.0", features = ["deref", "deref_mut"] }
 dioxus = { version = "0.7.0", default-features = false, features = ["fullstack", "macro", "html", "hooks", "signals", "logger", "cli-config"] }
@@ -2429,9 +2432,12 @@ derive_more.workspace = true
 dioxus = { workspace = true, features = ["router", "document", "ssr"] }
 dioxus-primitives.workspace = true
 errgonomic.workspace = true
+eventsource-stream.workspace = true
 fjall.workspace = true
 futures.workspace = true
+openai_dive.workspace = true
 pulldown-cmark.workspace = true
+secrecy.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 thiserror.workspace = true
@@ -2570,6 +2576,16 @@ mod queue_panel;
 pub use queue_panel::*;
 mod pending_steer;
 pub use pending_steer::*;
+mod constants;
+pub use constants::*;
+mod transcribe_params;
+pub use transcribe_params::*;
+mod transcript;
+pub use transcript::*;
+mod transcript_event;
+pub use transcript_event::*;
+mod voice_controls;
+pub use voice_controls::*;
 ```
 
 ### packages/crs-web/src/main.rs

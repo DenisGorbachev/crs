@@ -1,4 +1,5 @@
 import { threadQueue } from "/thread-queue.js";
+import { voiceInput } from "/voice.js";
 
 const segmenter = typeof Intl.Segmenter === "function" && new Intl.Segmenter(undefined, { granularity: "sentence" });
 const quotations = new WeakMap();
@@ -513,6 +514,7 @@ if (pageNav) {
 }
 
 const thread = document.querySelector("#thread-review");
+for (const controls of document.querySelectorAll("[data-voice]")) voiceInput(controls);
 if (thread) {
     const form = thread.querySelector(".thread-draft");
     if (form) liveTranscript(thread, form);

@@ -1,4 +1,4 @@
-use crate::{Button, ButtonSize, Textarea, ThreadControls, icon};
+use crate::{Button, ButtonSize, Textarea, ThreadControls, VoiceControls, icon};
 use dioxus::prelude::*;
 use uuid::Uuid;
 
@@ -20,10 +20,12 @@ pub fn MessageForm(source: String, thread_id: Option<String>, #[props(default = 
             if let Some(id) = thread_id {
                 ThreadControls { thread_id: id }
             }
-            Button { size: ButtonSize::IconSm, class: "ms-auto shrink-0 rounded-full", r#type: "submit", title: submit, aria_label: submit, disabled: !writable, hidden: !writable, {icon("m6 12 6-6 6 6M12 6v13")} }
+            VoiceControls {}
+            Button { size: ButtonSize::IconSm, class: "shrink-0 rounded-full inert:opacity-50", r#type: "submit", title: submit, aria_label: submit, disabled: !writable, hidden: !writable, {icon("m6 12 6-6 6 6M12 6v13")} }
         }
         if existing {
             span { class: "text-sm empty:sr-only", role: "status", "aria-live": "polite" }
         }
+        span { class: "text-sm empty:sr-only", "data-voice-status": "", "aria-live": "polite" }
     } }
 }

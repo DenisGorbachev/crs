@@ -31,9 +31,12 @@ derive_more.workspace = true
 dioxus = { workspace = true, features = ["router", "document", "ssr"] }
 dioxus-primitives.workspace = true
 errgonomic.workspace = true
+eventsource-stream.workspace = true
 fjall.workspace = true
 futures.workspace = true
+openai_dive.workspace = true
 pulldown-cmark.workspace = true
+secrecy.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 thiserror.workspace = true

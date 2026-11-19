@@ -77,6 +77,8 @@ Unknown sources, missing threads and threads outside the cutoff return HTTP 404.
 
 Creation and follow-up forms support native HTML POST. Enable follow-ups when direct input is available. Validate the form key before submitting to Codex. Generate it once per Fjall database and reuse it after restarts. To supply a dedicated random UUID instead, set `form_key_env` to the name of its environment variable. Preserve nonblank message text and reject whitespace-only input.
 
+Voice recording requires HTTPS or localhost and a server-side `OPENAI_API_KEY` (or `--openai-api-key`). Configure transcription under `[transcribe_params]`. With `stream = true`, insert text from the completed transcription event. [Voice transcription specification](../../.agents/transcription.md).
+
 Start a new thread and its first turn with `thread/start` and `turn/start`. For a follow-up, resume the existing thread and call `thread/queue/add` with a fresh client message ID. Let Codex dispatch eligible idle threads and drain busy threads after their current turn.
 
 Read all `thread/queue/list` pages for visible threads. Refresh after local mutations and received queue notifications. Periodic reads also capture changes from other clients. Below each queued message, offer **Steer**, **Edit**, **Cancel**. Edit text parts in place with `thread/queue/update`, retaining attachments and annotated input. Cancel with `thread/queue/delete`. Preserve structured input and metadata when steering.

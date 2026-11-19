@@ -1,4 +1,5 @@
-use crate::{App, Server, ServerOpenError, SharedServer, submit_message, thread_events, thread_updates};
+use crate::{App, MAX_RECORDING_BYTES, Server, ServerOpenError, SharedServer, submit_message, thread_events, thread_updates, transcribe};
+use axum::extract::DefaultBodyLimit;
 use axum::http::header::CONTENT_TYPE;
 use axum::routing::{get, post};
 use axum::{Extension, Router, serve};
@@ -6,6 +7,8 @@ use clap::Parser;
 use dioxus::cli_config::fullstack_address_or_localhost;
 use dioxus::server::{DioxusRouterExt, ServeConfig};
 use errgonomic::handle;
+use openai_dive::v1::api::Client;
+use secrecy::{ExposeSecret, SecretString};
 use std::io;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -23,6 +26,8 @@ use tracing::{info, warn};
 pub struct Command {
     #[arg(long, env = "CRS_WEB_CONFIG")]
     config: PathBuf,
+    #[arg(long, env = "OPENAI_API_KEY", hide_env_values = true)]
+    openai_api_key: Option<SecretString>,
 }
 
 impl Command {
@@ -33,17 +38,26 @@ impl Command {
         let config = server.config.clone();
         let sources: Vec<_> = server.sources.values().cloned().collect();
         let form_key = server.form_key;
+        let openai = self
+            .openai_api_key
+            .filter(|key| !key.expose_secret().trim().is_empty())
+            .map(|key| Arc::new(Client::new(key.expose_secret().to_owned())));
         let server: SharedServer = Arc::new(Mutex::new(server));
         let (shutdown, receiver) = watch::channel(());
         let router = Router::new()
+            .route("/api/transcribe", post(transcribe).layer(DefaultBodyLimit::max(MAX_RECORDING_BYTES)))
+            .layer(Extension(openai.clone()))
             .route("/api/thread-events", get(thread_events))
             .route("/api/thread-updates", post(thread_updates))
             .route("/messages", post(submit_message))
+            .route("/voice.js", get(async || ([(CONTENT_TYPE, "text/javascript; charset=utf-8")], include_str!("voice.js"))))
+            .route("/voice-pcm.js", get(async || ([(CONTENT_TYPE, "text/javascript; charset=utf-8")], include_str!("voice_pcm.js"))))
             .route("/thread-queue.js", get(async || ([(CONTENT_TYPE, "text/javascript; charset=utf-8")], include_str!("thread_queue.js"))))
             .route("/thread-review.js", get(async || ([(CONTENT_TYPE, "text/javascript; charset=utf-8")], include_str!("thread_review.js"))))
             .serve_api_application(
                 ServeConfig::new()
                     .context(form_key)
+                    .context(openai.is_some())
                     .context(config)
                     .context(store.clone()),
                 App,
