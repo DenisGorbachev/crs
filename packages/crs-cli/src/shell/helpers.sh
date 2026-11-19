@@ -100,8 +100,10 @@ function crs-drafts-new() {
   timestamp=$(crs-timestamp) || return
   drafts_dir="$repo_root/.crs.local/drafts"
   mkdir -p "$drafts_dir" || return
-  draft_path=$(python3 -c 'import sys, tempfile
-print(tempfile.mkstemp(dir=sys.argv[1], prefix=sys.argv[2] + ".", suffix=".md")[1])' "$drafts_dir" "$timestamp") || return
+  draft_path=$(
+    cd "$drafts_dir" || exit
+    template="$timestamp.XXXXXX" nu --no-config-file --commands "mktemp --suffix '.md' \$env.template"
+  ) || return
   info "$draft_path" || return
   echo "$draft_path"
 }
