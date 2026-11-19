@@ -27,7 +27,6 @@ pub fn Textarea(
     #[props(extends=GlobalAttributes)]
     #[props(extends=textarea)]
     attributes: Vec<Attribute>,
-    children: Element,
 ) -> Element {
     rsx! {
         textarea {
@@ -35,7 +34,6 @@ pub fn Textarea(
             "data-slot": "textarea",
             "data-style": variant.class(),
             ..attributes,
-            {children}
         }
     }
 }
