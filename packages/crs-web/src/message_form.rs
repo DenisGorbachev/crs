@@ -1,4 +1,4 @@
-use crate::{Button, ButtonSize, Textarea, ThreadControls, VoiceControls, icon};
+use crate::{Button, ButtonSize, Textarea, ThreadControls, UrlSegment, VoiceControls, icon};
 use dioxus::prelude::*;
 use uuid::Uuid;
 
@@ -10,16 +10,14 @@ pub fn MessageForm(source: String, thread_id: Option<String>, #[props(default = 
     let submit = if existing { "Send message" } else { "Create thread" };
     rsx! { form { method: "post", action: "/messages", class: existing.then_some("thread-draft"),
         input { r#type: "hidden", name: "form_key", value: "{form_key}" }
-        input { r#type: "hidden", name: "source", value: source }
+        input { r#type: "hidden", name: "source", value: source.as_str() }
         if let Some(id) = thread_id.as_deref() {
             input { r#type: "hidden", name: "thread_id", value: "{id}" }
             p { id: "direct-input-notice", hidden: writable, "This thread does not accept direct messages." }
         }
         Textarea { aria_label: label, id: "message", name: "message", rows: "5", required: true, disabled: !writable, hidden: !writable }
         div { class: "controls flex items-center gap-2",
-            if let Some(id) = thread_id {
-                ThreadControls { thread_id: id }
-            }
+            ThreadControls { source: UrlSegment { value: source.clone() }, thread_id }
             VoiceControls {}
             Button { size: ButtonSize::IconSm, class: "shrink-0 rounded-full inert:opacity-50", r#type: "submit", title: submit, aria_label: submit, disabled: !writable, hidden: !writable, {icon("m6 12 6-6 6 6M12 6v13")} }
         }
