@@ -38,6 +38,7 @@ impl Server {
                         server_id: id.clone(),
                         source: source.clone(),
                         store: threads.clone(),
+                        connection: Default::default(),
                         writers: Default::default(),
                         refresh: Default::default(),
                         viewed: Default::default(),

@@ -5273,6 +5273,7 @@ name = "crs-web"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "base64 0.22.1",
  "clap",
  "codex-app-server-client",
  "codex-app-server-protocol",

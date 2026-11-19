@@ -1,4 +1,4 @@
-use crate::{App, MAX_RECORDING_BYTES, Server, ServerOpenError, SharedServer, submit_message, thread_events, thread_updates, transcribe};
+use crate::{App, MAX_RECORDING_BYTES, Server, ServerOpenError, SharedServer, open_file, submit_message, thread_events, thread_updates, transcribe};
 use axum::extract::DefaultBodyLimit;
 use axum::http::header::CONTENT_TYPE;
 use axum::routing::{get, post};
@@ -50,6 +50,7 @@ impl Command {
             .route("/api/thread-events", get(thread_events))
             .route("/api/thread-updates", post(thread_updates))
             .route("/messages", post(submit_message))
+            .route("/servers/{source}/files", get(open_file))
             .route("/voice.js", get(async || ([(CONTENT_TYPE, "text/javascript; charset=utf-8")], include_str!("voice.js"))))
             .route("/voice-pcm.js", get(async || ([(CONTENT_TYPE, "text/javascript; charset=utf-8")], include_str!("voice_pcm.js"))))
             .route("/thread-queue.js", get(async || ([(CONTENT_TYPE, "text/javascript; charset=utf-8")], include_str!("thread_queue.js"))))

@@ -21,6 +21,7 @@ pub struct CodexSync {
     pub source: CodexAppServer,
     pub config: Arc<Config>,
     pub store: ThreadStore,
+    pub connection: Mutex<Option<Arc<CodexConnection>>>,
     pub writers: Mutex<HashMap<String, Weak<Mutex<()>>>>,
     pub refresh: Notify,
     pub viewed_changed: Notify,
@@ -36,7 +37,8 @@ impl CodexSync {
             };
             match connection {
                 Ok(mut client) => {
-                    let connection = CodexConnection::from(&client);
+                    let connection = Arc::new(CodexConnection::from(&client));
+                    *self.connection.lock().await = Some(connection.clone());
                     let disconnected = tokio::select! {
                         biased;
                         _ = shutdown.changed() => false,
@@ -45,6 +47,7 @@ impl CodexSync {
                         () = self.refresh_viewed_periodically(&connection) => true,
                         () = self.reconcile_periodically(&connection) => true,
                     };
+                    *self.connection.lock().await = None;
                     drop(connection);
                     if let Err(error) = client.shutdown().await {
                         warn!(server_id = self.server_id, error = %error, "failed to close Codex connection");

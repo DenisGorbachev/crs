@@ -2264,6 +2264,8 @@ absolute_paths = "deny"
 arithmetic_side_effects = "deny"
 
 [workspace.dependencies]
+# codex-tui requires base64 >= 0.22.1.
+base64 = "0.22.0"
 eventsource-stream = "0.2.0"
 openai_dive = { git = "https://github.com/DenisGorbachev/openai-dive", rev = "bd7a16dafb4657fd24ff449953b3415cf062ff16", default-features = false, features = ["reqwest", "rustls-tls"] }
 secrecy = "0.10.0"
@@ -2423,6 +2425,7 @@ server = ["dioxus/server"]
 
 [dependencies]
 axum.workspace = true
+base64.workspace = true
 clap.workspace = true
 codex-app-server-client.workspace = true
 codex-app-server-protocol.workspace = true
@@ -2546,6 +2549,10 @@ mod thread_page;
 pub use thread_page::*;
 mod route;
 pub use route::*;
+mod file_links;
+pub use file_links::*;
+mod file_query;
+pub use file_query::*;
 mod url_segment;
 pub use url_segment::*;
 mod server_page;

@@ -1,12 +1,16 @@
-use crate::code_ranges;
+use crate::{FileLinks, code_ranges};
 use dioxus::prelude::*;
 use pulldown_cmark::html::push_html;
 use pulldown_cmark::{CodeBlockKind, Event, Options, Parser, Tag, TagEnd};
 use std::iter::from_fn;
 use url::{ParseError, Url};
 
-pub fn markdown_view(markdown: &str) -> Element {
-    let mut events = Parser::new_ext(markdown, Options::ENABLE_TABLES | Options::ENABLE_STRIKETHROUGH | Options::ENABLE_TASKLISTS);
+pub fn thread_markdown(markdown: &str) -> Parser<'_> {
+    Parser::new_ext(markdown, Options::ENABLE_TABLES | Options::ENABLE_STRIKETHROUGH | Options::ENABLE_TASKLISTS)
+}
+
+pub fn markdown_view(markdown: &str, files: &FileLinks<'_>) -> Element {
+    let mut events = thread_markdown(markdown);
     let mut html = String::new();
     let safe_events = from_fn(|| {
         Some(match events.next()? {
@@ -21,7 +25,12 @@ pub fn markdown_view(markdown: &str) -> Element {
                 }
                 Event::Html(code_html(&kind, source).into())
             }
+            Event::Start(Tag::Link {
+                dest_url,
+                ..
+            }) if dest_url.starts_with("~/") => Event::Html(r#"<a aria-disabled="true" title="Use an absolute path. The Codex server's home directory is unknown.">"#.into()),
             Event::Start(mut tag) => {
+                let file_href = files.href(&tag);
                 if let Tag::Link {
                     dest_url,
                     ..
@@ -31,10 +40,14 @@ pub fn markdown_view(markdown: &str) -> Element {
                     ..
                 } = &mut tag
                 {
-                    match Url::parse(dest_url) {
-                        Ok(url) if matches!(url.scheme(), "http" | "https" | "mailto") => (),
-                        Err(ParseError::RelativeUrlWithoutBase) => (),
-                        _ => *dest_url = "#".into(),
+                    if let Some(href) = file_href {
+                        *dest_url = href.into();
+                    } else {
+                        match Url::parse(dest_url) {
+                            Ok(url) if matches!(url.scheme(), "http" | "https" | "mailto") => (),
+                            Err(ParseError::RelativeUrlWithoutBase) => (),
+                            _ => *dest_url = "#".into(),
+                        }
                     }
                 }
                 Event::Start(tag)

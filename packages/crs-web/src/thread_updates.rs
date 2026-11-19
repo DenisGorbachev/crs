@@ -1,4 +1,4 @@
-use crate::{Config, QueueSnapshot, RenderTurnsError, SharedServer, ThreadHeader, ThreadStore, ThreadStorePageError, ThreadStoreQueuePreviewsError, ThreadStoreRecordError, render_turns};
+use crate::{Config, FileLinks, QueueSnapshot, RenderTurnsError, SharedServer, ThreadHeader, ThreadStore, ThreadStorePageError, ThreadStoreQueuePreviewsError, ThreadStoreRecordError, render_turns};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::{Extension, Json};
@@ -48,7 +48,8 @@ impl ThreadUpdates {
         }
         let page = handle!(store.page(&snapshot, &self.source, record), PageFailed);
         let versions = &page.versions;
-        let turns = handle!(render_turns(page.turns, versions, &self.versions), RenderTurnsFailed);
+        let files = FileLinks::from((self.source.as_str(), &page.record.thread));
+        let turns = handle!(render_turns(page.turns, versions, &self.versions, &files), RenderTurnsFailed);
         let html: Vec<_> = turns
             .into_iter()
             .map(|(index, turn)| (index, render_element(turn)))

@@ -335,6 +335,7 @@ function composer(root, form, syncControls, queue) {
     function insert(event) {
         if (!quoting() || editor.readOnly) return;
         const link = event.target.closest(".markdown a");
+        if (link?.getAttribute("href")?.startsWith(root.querySelector("#turns").dataset.fileRoute + "?")) return;
         const part = event.target.closest(".quote-chunk") ?? link?.querySelector(".quote-chunk");
         if (!part && !link) return;
         event.preventDefault();

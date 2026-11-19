@@ -1,4 +1,4 @@
-use crate::{Config, Disclosure, MessageForm, PageNav, QueuePanel, ThreadHeader, ThreadRecord, ThreadStore, UrlSegment, page_error, thread_item_view, turn_anchor};
+use crate::{Config, Disclosure, FileLinks, MessageForm, PageNav, QueuePanel, ThreadHeader, ThreadRecord, ThreadStore, UrlSegment, page_error, thread_item_view, turn_anchor};
 use codex_app_server_protocol::Turn;
 use dioxus::prelude::*;
 use errgonomic::{ErrorDisplayer, handle};
@@ -22,7 +22,9 @@ impl ThreadPage {
             mut record,
             turns,
         } = self;
-        let turns = handle!(render_turns(turns, &versions, &[]), RenderTurnsFailed);
+        let files = FileLinks::from((source, &record.thread));
+        let turns = handle!(render_turns(turns, &versions, &[], &files), RenderTurnsFailed);
+        let file_route = files.route;
         let has_turns = !turns.is_empty();
         record.thread.turns.clear();
         let header = handle!(ThreadHeader::try_from(&record), EncodeRecordFailed);
@@ -34,7 +36,7 @@ impl ThreadPage {
             Disclosure { label: rsx! { "Thread details" }, pre { id: "thread-metadata", "data-version": header.version, "{header.metadata}" } }
             p { id: "update-status", role: "status", hidden: true, "Live updates paused. Retrying…" }
             p { id: "empty-transcript", hidden: has_turns, "No turns in this thread." }
-            div { id: "turns", "data-source": source, "data-thread": record.thread.id.as_str(),
+            div { id: "turns", "data-source": source, "data-file-route": file_route, "data-thread": record.thread.id.as_str(),
                 {turns.into_iter().map(|(_, turn)| turn)}
             }
             QueuePanel {}
@@ -43,7 +45,7 @@ impl ThreadPage {
     }
 }
 
-pub fn render_turns(history: Vec<Turn>, versions: &[String], known: &[String]) -> Result<Vec<(usize, Element)>, RenderTurnsError> {
+pub fn render_turns(history: Vec<Turn>, versions: &[String], known: &[String], files: &FileLinks<'_>) -> Result<Vec<(usize, Element)>, RenderTurnsError> {
     use RenderTurnsError::*;
     let mut turns = Vec::new();
     for (number, ((index, mut turn), version)) in (1usize..).zip(history.into_iter().enumerate().zip(versions)) {
@@ -53,7 +55,7 @@ pub fn render_turns(history: Vec<Turn>, versions: &[String], known: &[String]) -
 
         let mut transcript = Vec::new();
         for item in take(&mut turn.items) {
-            transcript.push(thread_item_view(handle!(serde_json::to_value(item), EncodeItemFailed)));
+            transcript.push(thread_item_view(handle!(serde_json::to_value(item), EncodeItemFailed), files));
         }
         let mut metadata = handle!(serde_json::to_value(&turn), EncodeTurnFailed);
         if let Some(fields) = metadata.as_object_mut() {

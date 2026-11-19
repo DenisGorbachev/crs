@@ -1,9 +1,9 @@
-use crate::{ChatMessage, Disclosure, content_version, markdown_view};
+use crate::{ChatMessage, Disclosure, FileLinks, content_version, markdown_view};
 use dioxus::prelude::*;
 use serde_json::Value;
 use std::mem::take;
 
-pub fn thread_item_view(mut item: Value) -> Element {
+pub fn thread_item_view(mut item: Value, files: &FileLinks<'_>) -> Element {
     let version = content_version(&item);
     let Some(fields) = item.as_object_mut() else { return structured_value(&item) };
     let id = fields
@@ -29,7 +29,7 @@ pub fn thread_item_view(mut item: Value) -> Element {
             let inputs = content.as_array().into_iter().flatten().map(|input| {
                 if let Some(text) = input.get("text").and_then(Value::as_str) {
                     rsx! {
-                        {markdown_view(text)}
+                        {markdown_view(text, files)}
                         if let Some(spans) = input.get("text_elements").filter(|v| v.as_array().is_some_and(|a| !a.is_empty())) {
                             Disclosure { label: rsx! { "Text spans" }, {structured_value(spans)} }
                         }
@@ -51,7 +51,7 @@ pub fn thread_item_view(mut item: Value) -> Element {
         }
         Some("agentMessage" | "plan") => {
             let text = fields.remove("text").unwrap_or_default();
-            markdown_view(text.as_str().unwrap_or_default())
+            markdown_view(text.as_str().unwrap_or_default(), files)
         }
         Some("commandExecution") => {
             let command = fields.remove("command").unwrap_or_default();
