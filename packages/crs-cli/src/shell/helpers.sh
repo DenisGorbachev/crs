@@ -22,7 +22,6 @@ function crs-env() {
 }
 
 function crs-codex-thread-output-path() {
-  crs-require-sandbox || return
   local repo_root file_stem output_dir
   repo_root=$(git rev-parse --show-toplevel) || return
   file_stem=${1:?"file stem is required"}
@@ -36,7 +35,6 @@ function crs-codex-thread-output-path() {
 }
 
 function crs-codex-thread-create() {
-  crs-require-sandbox || return
   if [[ -n ${CRS_CODEX_THREAD_ID+x} ]]; then
     error "CRS_CODEX_THREAD_ID is already set"
     return 1
@@ -81,7 +79,6 @@ function crs-codex-thread-create() {
 }
 
 function crs-codex-thread-resume() {
-  crs-require-sandbox || return
   if [[ -z ${CRS_CODEX_THREAD_ID-} ]]; then
     error "CRS_CODEX_THREAD_ID is not set"
     return 1
@@ -103,7 +100,8 @@ function crs-drafts-new() {
   timestamp=$(crs-timestamp) || return
   drafts_dir="$repo_root/.crs.local/drafts"
   mkdir -p "$drafts_dir" || return
-  draft_path=$(mktemp --suffix=.md "$drafts_dir/$timestamp.XXXXXX") || return
+  draft_path=$(python3 -c 'import sys, tempfile
+print(tempfile.mkstemp(dir=sys.argv[1], prefix=sys.argv[2] + ".", suffix=".md")[1])' "$drafts_dir" "$timestamp") || return
   info "$draft_path" || return
   echo "$draft_path"
 }
@@ -119,7 +117,6 @@ function crs-drafts-new-edit() {
 }
 
 function crs-codex-thread-resume-edit() {
-  crs-require-sandbox || return
   if [[ -z ${CRS_CODEX_THREAD_ID-} ]]; then
     error "CRS_CODEX_THREAD_ID is not set"
     return 1
