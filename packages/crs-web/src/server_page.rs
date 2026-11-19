@@ -1,4 +1,4 @@
-use crate::{Config, MessageForm, Route, ThreadStore, UrlSegment, page_error};
+use crate::{Config, Disclosure, Item, ItemContent, ItemDescription, ItemGroup, ItemSize, ItemTitle, MessageForm, PageNav, Route, ThreadStore, UrlSegment, page_error};
 use dioxus::prelude::*;
 use errgonomic::ErrorDisplayer;
 use std::iter::once;
@@ -35,18 +35,22 @@ pub fn ServerPage(source: ReadSignal<UrlSegment>) -> Element {
     let data = ready.read();
     rsx! { main {
         document::Title { "{source().value} · CRS-Web" }
-        nav { Link { to: Route::Home {}, "Servers" } }
+        PageNav {}
         match &*data {
             Ok(threads) => rsx! {
                 h1 { "{source().value}" }
-                details { summary { "New thread" } MessageForm { source: source().value } }
+                Disclosure { label: rsx! { "New thread" }, MessageForm { source: source().value } }
                 if threads.is_empty() { p { "No synchronized threads yet." } }
-                ul {
+                ItemGroup {
                     for thread in threads {
-                        li { key: "{thread.id}",
-                            Link { to: Route::thread(source(), thread.id.clone(), thread.last_turn_id.as_deref()), "{thread.title}" }
-                            if thread.archived { " · Archived" }
-                            small { class: "block", "{thread.cwd.display()}" }
+                        Item { key: "{thread.id}", role: "listitem", size: ItemSize::Sm,
+                            ItemContent {
+                                ItemTitle {
+                                    Link { to: Route::thread(source(), thread.id.clone(), thread.last_turn_id.as_deref()), "{thread.title}" }
+                                    if thread.archived { " · Archived" }
+                                }
+                                ItemDescription { "{thread.cwd.display()}" }
+                            }
                         }
                     }
                 }

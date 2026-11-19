@@ -1,4 +1,4 @@
-use crate::{ThreadControls, icon};
+use crate::{Button, ButtonSize, Textarea, ThreadControls, icon};
 use dioxus::prelude::*;
 use uuid::Uuid;
 
@@ -17,9 +17,9 @@ pub fn MessageForm(source: String, thread_id: Option<String>, #[props(default = 
             p { id: "direct-input-notice", hidden: writable, "This thread does not accept direct messages." }
         }
         fieldset { disabled: !writable, hidden: !writable,
-            textarea { aria_label: label, id: "message", name: "message", rows: "5", required: true }
+            Textarea { aria_label: label, id: "message", name: "message", rows: "5", required: true }
             div { class: "draft-actions",
-                button { class: "icon-button primary", r#type: "submit", title: submit, aria_label: submit, {icon("m6 12 6-6 6 6M12 6v13")} }
+                Button { size: ButtonSize::IconSm, class: "rounded-full", r#type: "submit", title: submit, aria_label: submit, {icon("m6 12 6-6 6 6M12 6v13")} }
                 span { role: "status", "aria-live": "polite" }
             }
         }

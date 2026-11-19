@@ -1,4 +1,4 @@
-use crate::{Config, Route, SharedServer, ThreadSummary, UrlSegment};
+use crate::{Config, Item, ItemContent, ItemGroup, ItemSize, ItemTitle, Route, SharedServer, ThreadSummary, UrlSegment};
 use axum::Extension;
 use dioxus::fullstack::FullstackContext;
 use dioxus::prelude::*;
@@ -13,6 +13,7 @@ pub fn App() -> Element {
     rsx! {
         document::Meta { name: "viewport", content: "width=device-width, initial-scale=1, interactive-widget=resizes-content" }
         document::Style { {include_str!("../assets/tailwind.css")} }
+        script { r#type: "module", src: "/thread-review.js" }
         ErrorBoundary {
             handle_error: |context: ErrorContext| {
                 let missing = context.error().is_some_and(|e| e.downcast_ref::<ParseRouteError>().is_some());
@@ -46,9 +47,11 @@ pub fn Home() -> Element {
         document::Title { "Codex servers · CRS-Web" }
         h1 { "Codex servers" }
         if config.codex_app_servers.is_empty() { p { "No Codex servers configured." } }
-        ul {
+        ItemGroup {
             for name in config.codex_app_servers.keys() {
-                li { Link { to: Route::Server { source: UrlSegment { value: name.clone() } }, "{name}" } }
+                Item { key: "{name}", role: "listitem", size: ItemSize::Sm,
+                    ItemContent { ItemTitle { Link { to: Route::Server { source: UrlSegment { value: name.clone() } }, "{name}" } } }
+                }
             }
         }
     } }

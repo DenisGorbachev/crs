@@ -2264,6 +2264,7 @@ absolute_paths = "deny"
 arithmetic_side_effects = "deny"
 
 [workspace.dependencies]
+dioxus-primitives = { git = "https://github.com/DioxusLabs/components", rev = "9a758255ea26e2b20c8cecf4c1c946feb9e71da7" }
 derive_more = { version = "2.1.0", features = ["deref", "deref_mut"] }
 dioxus = { version = "0.7.0", default-features = false, features = ["fullstack", "macro", "html", "hooks", "signals", "logger", "cli-config"] }
 axum = "0.8.0"
@@ -2426,6 +2427,7 @@ codex-utils-absolute-path.workspace = true
 codex-utils-home-dir.workspace = true
 derive_more.workspace = true
 dioxus = { workspace = true, features = ["router", "document", "ssr"] }
+dioxus-primitives.workspace = true
 errgonomic.workspace = true
 fjall.workspace = true
 futures.workspace = true
@@ -2554,6 +2556,8 @@ mod thread_controls;
 pub use thread_controls::*;
 mod thread_header;
 pub use thread_header::*;
+mod components;
+pub use components::*;
 ```
 
 ### packages/crs-web/src/main.rs

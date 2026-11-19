@@ -1,4 +1,4 @@
-use crate::{Config, MessageForm, Route, ThreadHeader, ThreadRecord, ThreadStore, UrlSegment, page_error, thread_item_view, turn_anchor};
+use crate::{ChatMessage, Config, Disclosure, MessageForm, PageNav, ThreadHeader, ThreadRecord, ThreadStore, UrlSegment, page_error, thread_item_view, turn_anchor};
 use codex_app_server_protocol::Turn;
 use dioxus::prelude::*;
 use errgonomic::{ErrorDisplayer, handle};
@@ -31,14 +31,14 @@ impl ThreadPage {
             document::Title { "{title} · CRS-Web" }
             h1 { id: "thread-title", "{title}" }
             p { code { "{record.thread.id}" } span { id: "archive-state", hidden: !header.archived, " · Archived" } }
-            details { summary { "Thread details" } pre { id: "thread-metadata", "data-version": header.version, "{header.metadata}" } }
+            Disclosure { label: rsx! { "Thread details" }, pre { id: "thread-metadata", "data-version": header.version, "{header.metadata}" } }
             p { id: "update-status", role: "status", hidden: true, "Live updates paused. Retrying…" }
             p { id: "empty-transcript", hidden: has_turns, "No turns in this thread." }
             div { id: "turns", "data-source": source, "data-thread": record.thread.id.as_str(),
                 {turns.into_iter().map(|(_, turn)| turn)}
             }
             div { id: "pending-messages", template {
-                article { class: "my-5", "data-response": "User", aria_label: "User", div { class: "user-bubble ms-auto box-border w-fit max-w-full whitespace-pre-wrap rounded-3xl bg-neutral-800 px-4 py-2.5 text-white scheme-dark" } }
+                ChatMessage { speaker: "User", div { class: "user-bubble ms-auto box-border w-fit max-w-full whitespace-pre-wrap rounded-3xl bg-neutral-800 px-4 py-2.5 text-white scheme-dark" } }
             } }
             MessageForm { source: source.to_owned(), thread_id: record.thread.id.clone(), writable: header.writable }
         })
@@ -67,7 +67,7 @@ pub fn render_turns(history: Vec<Turn>, versions: &[String], known: &[String]) -
                 section { id: turn_anchor(&turn.id), "data-version": version.as_str(),
                     h2 { "Turn {number}" }
                     if let Some(error) = &turn.error { p { role: "alert", "{error.message}" } }
-                    details { summary { "Turn details · {turn.status:?}" } pre { "{metadata:#}" } }
+                    Disclosure { label: rsx! { "Turn details · {turn.status:?}" }, pre { "{metadata:#}" } }
                     if transcript.is_empty() { p { "No visible items in this turn." } }
                     {transcript.into_iter()}
                 }
@@ -113,13 +113,8 @@ pub fn ThreadView(source: ReadSignal<UrlSegment>, id: ReadSignal<UrlSegment>, an
         page_error(*status);
     }
     rsx! { main { id: "thread-review", "data-poll-ms": "{poll_ms}",
-        nav {
-            Link { to: Route::Home {}, "Servers" }
-            " / "
-            Link { to: Route::Server { source: source() }, "{source().value}" }
-        }
+        PageNav { source: source() }
         {content.clone()}
-        if *status == StatusCode::OK { script { r#type: "module", src: "/thread-review.js" } }
     } }
 }
 

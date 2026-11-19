@@ -1,4 +1,4 @@
-use crate::{content_version, markdown_view};
+use crate::{ChatMessage, Disclosure, content_version, markdown_view};
 use dioxus::prelude::*;
 use serde_json::Value;
 use std::mem::take;
@@ -31,7 +31,7 @@ pub fn thread_item_view(mut item: Value) -> Element {
                     rsx! {
                         {markdown_view(text)}
                         if let Some(spans) = input.get("text_elements").filter(|v| v.as_array().is_some_and(|a| !a.is_empty())) {
-                            details { summary { "Text spans" } {structured_value(spans)} }
+                            Disclosure { label: rsx! { "Text spans" }, {structured_value(spans)} }
                         }
                     }
                 } else if let (Some(kind), Some(url)) = (input.get("type").and_then(Value::as_str), input.get("url").and_then(Value::as_str)) {
@@ -71,15 +71,15 @@ pub fn thread_item_view(mut item: Value) -> Element {
     };
     if let Some(speaker) = speaker {
         let client_id = item.get("clientId").and_then(Value::as_str);
-        rsx! { article { class: "my-5", "data-item": id, "data-version": version, "data-client-id": client_id, "data-response": speaker, aria_label: speaker,
+        rsx! { ChatMessage { speaker, "data-item": id, "data-version": version, "data-client-id": client_id,
             {body}
             {item_details(&item)}
         } }
     } else {
-        rsx! { details { class: "activity-item my-3", "data-item": id, "data-version": version,
-            summary { class: "list-inside truncate text-sm",
+        rsx! { Disclosure { class: "activity-item my-3", "data-item": id, "data-version": version, summary_class: "list-inside truncate text-sm",
+            label: rsx! {
                 if kind == "commandExecution" { code { "{preview}" } } else { "{preview}" }
-            }
+            },
             {body}
             {item_details(&item)}
         } }
@@ -87,7 +87,7 @@ pub fn thread_item_view(mut item: Value) -> Element {
 }
 
 fn item_details(item: &Value) -> Element {
-    rsx! { details { class: "item-details mt-1 text-xs", summary { "Item details" } pre { "{item:#}" } } }
+    rsx! { Disclosure { class: "item-details mt-1 text-xs", label: rsx! { "Item details" }, pre { "{item:#}" } } }
 }
 
 fn structured_value(value: &Value) -> Element {

@@ -46,3 +46,5 @@ mod thread_controls;
 pub use thread_controls::*;
 mod thread_header;
 pub use thread_header::*;
+mod components;
+pub use components::*;

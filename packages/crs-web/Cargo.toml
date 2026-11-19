@@ -29,6 +29,7 @@ codex-utils-absolute-path.workspace = true
 codex-utils-home-dir.workspace = true
 derive_more.workspace = true
 dioxus = { workspace = true, features = ["router", "document", "ssr"] }
+dioxus-primitives.workspace = true
 errgonomic.workspace = true
 fjall.workspace = true
 futures.workspace = true

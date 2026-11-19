@@ -135,10 +135,36 @@ function formatQuote(value) {
     return text.replace(/\r\n?/g, "\n").split("\n").map(line => "> " + line).join("\n");
 }
 
+function arrowNavigation(container, selector) {
+    let current;
+    function sync(active = current) {
+        const items = [...container.querySelectorAll(selector)].filter(item => item.getClientRects().length);
+        current = items.includes(active) ? active : items[0];
+        items.forEach(item => { item.tabIndex = item === current ? 0 : -1; });
+        return items;
+    }
+    sync();
+    container.addEventListener("focusin", event => sync(event.target));
+    container.addEventListener("keydown", event => {
+        if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+        const items = sync(event.target);
+        const index = items.indexOf(event.target);
+        if (index < 0) return;
+        if (event.key === " " && event.target.matches('a[role="menuitem"]')) {
+            event.preventDefault();
+            event.target.click();
+            return;
+        }
+        const target = { ArrowLeft: Math.max(0, index - 1), ArrowRight: Math.min(items.length - 1, index + 1), Home: 0, End: items.length - 1 }[event.key];
+        if (target === undefined) return;
+        event.preventDefault();
+        items[target].focus();
+    });
+    return sync;
+}
+
 function navigation(root) {
     const controls = root.querySelector(".controls");
-    if (!controls) return;
-    const bar = controls.querySelector("nav");
     let selected;
     let lastScroll;
     function select(message) {
@@ -147,7 +173,8 @@ function navigation(root) {
         selected?.setAttribute("aria-current", "true");
     }
     controls.hidden = false;
-    bar.addEventListener("click", event => {
+    const sync = arrowNavigation(controls, "button:not(:disabled)");
+    controls.addEventListener("click", event => {
         const direction = event.target.closest("button")?.dataset.go;
         switch (direction) {
             case "first": select(null); window.scrollTo(0, 0); break;
@@ -175,6 +202,7 @@ function navigation(root) {
             }
         }
     });
+    return sync;
 }
 
 function readStorage(area, key) {
@@ -268,7 +296,7 @@ function atTranscriptBottom() {
     return document.documentElement.scrollHeight - innerHeight - scrollY <= 4;
 }
 
-function composer(root, form) {
+function composer(root, form, syncControls) {
     const editor = form.elements.message;
     const quoteButton = form.querySelector("#quote-mode");
     const fieldset = form.querySelector("fieldset");
@@ -290,11 +318,14 @@ function composer(root, form) {
         if (writable === fieldset.disabled) {
             fieldset.hidden = fieldset.disabled = !writable;
             root.querySelector("#direct-input-notice").hidden = writable;
+            syncControls();
             syncQuotes(root);
         }
     }
     quoteButton.addEventListener("click", () => {
-        quoteButton.ariaPressed = String(!quoting());
+        const enabled = !quoting();
+        quoteButton.ariaPressed = String(enabled);
+        quoteButton.dataset.state = enabled ? "on" : "off";
         syncQuotes(root);
     });
     function insert(event) {
@@ -375,7 +406,11 @@ function patchTurn(current, next) {
             });
             if (old.ariaCurrent === "true") node.ariaCurrent = "true";
             if (old.isEqualNode(node)) node = old;
-            else old.replaceWith(node);
+            else {
+                const focused = old.contains(document.activeElement) ? [...old.querySelectorAll("summary")].indexOf(document.activeElement) : -1;
+                old.replaceWith(node);
+                if (focused >= 0) node.querySelectorAll("summary")[focused]?.focus({ preventScroll: true });
+            }
         }
         const at = current.children[index];
         if (node !== at) current.insertBefore(node, at ?? null);
@@ -474,9 +509,14 @@ function liveTranscript(root, { setWritable, syncQuotes }) {
     subscribe();
 }
 
+const pageNav = document.querySelector(".page-nav");
+if (pageNav) {
+    pageNav.tabIndex = -1;
+    arrowNavigation(pageNav, "a");
+}
+
 const thread = document.querySelector("#thread-review");
 if (thread) {
-    navigation(thread);
     const form = thread.querySelector(".thread-draft");
-    if (form) liveTranscript(thread, composer(thread, form));
+    if (form) liveTranscript(thread, composer(thread, form, navigation(thread)));
 }

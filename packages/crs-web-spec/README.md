@@ -56,7 +56,9 @@ Omitting `socket_path` selects the control socket under `CODEX_HOME`, which defa
 
 ## Pages
 
-Dioxus `Router<Route>` renders pages and typed `Link` components generate URLs. [Dioxus routing guide](https://dioxuslabs.com/learn/0.7/essentials/router/).
+Use Dioxus Components for lists, messages, navigation, disclosures and the composer. Bundle registry styles with Tailwind. Render disclosures as native HTML so they also work in streamed turns and with JavaScript disabled. [Component registry revision](https://github.com/DioxusLabs/dioxus-components/tree/9a758255ea26e2b20c8cecf4c1c946feb9e71da7).
+
+Dioxus `Router<Route>` renders pages and typed links generate URLs. [Dioxus routing guide](https://dioxuslabs.com/learn/0.7/essentials/router/).
 
 - `/` lists all configured Codex servers, including those with no synchronized threads.
 - `/servers/<source>` lists top-level threads by most recent update. Exclude attached children and subagents, including subagents without a recorded parent ID. A standalone fork remains eligible. Show the app-server working directory below each thread name. Each link targets `#turn-<id>` for the chronologically last turn, including an ongoing, failed or interrupted turn. A thread with no turns opens without a fragment.
