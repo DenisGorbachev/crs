@@ -23,7 +23,6 @@ impl ThreadPage {
         } = self;
         let files = FileLinks::from((source, &record.thread.cwd));
         let turns = handle!(render_turns(turns, &versions, &[], &files), RenderTurnsFailed);
-        let file_route = files.route;
         let has_turns = !turns.is_empty();
         record.thread.turns.clear();
         let header = handle!(ThreadHeader::try_from(&record), EncodeRecordFailed);
@@ -35,7 +34,7 @@ impl ThreadPage {
             Disclosure { label: rsx! { "Thread details" }, pre { id: "thread-metadata", "data-version": header.version, "{header.metadata}" } }
             p { id: "update-status", role: "status", hidden: true, "Live updates paused. Retrying…" }
             p { id: "empty-transcript", hidden: has_turns, "No turns in this thread." }
-            div { id: "turns", "data-source": source, "data-file-route": file_route, "data-thread": record.thread.id.as_str(),
+            div { id: "turns", "data-source": source, "data-thread": record.thread.id.as_str(),
                 {turns.into_iter().map(|(_, turn)| turn)}
             }
             QueuePanel {}

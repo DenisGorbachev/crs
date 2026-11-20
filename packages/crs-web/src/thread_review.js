@@ -27,6 +27,7 @@ function prepareProse(root) {
         let sentence = iterator.next().value;
         let first = true;
         for (const { node, start, length } of pieces) {
+            if (node.parentElement.closest("a[href]")) continue;
             const end = start + length;
             let pos = start;
             const fragment = document.createDocumentFragment();
@@ -288,7 +289,7 @@ function prepareQuotes(scope, enabled) {
         if (!enabled) {
             part.removeAttribute("tabindex");
             part.removeAttribute("role");
-        } else if (!part.closest("a")) {
+        } else {
             part.tabIndex = 0;
             part.setAttribute("role", "button");
         }
@@ -359,15 +360,13 @@ function composer(root, form, syncControls, queue) {
         syncQuotes(root);
     });
     function insert(event) {
-        if (!quoting() || editor.readOnly) return;
-        const link = event.target.closest(".markdown a");
-        if (link?.getAttribute("href")?.startsWith(root.querySelector("#turns").dataset.fileRoute + "/")) return;
-        const part = event.target.closest(".quote-chunk") ?? link?.querySelector(".quote-chunk");
-        if (!part && !link) return;
+        if (!quoting() || editor.readOnly || event.target.closest("a[href]")) return;
+        const part = event.target.closest(".quote-chunk");
+        if (!part) return;
         event.preventDefault();
         const text = editor.value;
         const separator = !text || text.endsWith("\n\n") ? "" : text.endsWith("\n") ? "\n" : "\n\n";
-        editor.value = text + separator + formatQuote(part ? quotations.get(part) : link.href) + "\n\n";
+        editor.value = text + separator + formatQuote(quotations.get(part)) + "\n\n";
         draft.save();
         editor.focus({ preventScroll: true });
         editor.setSelectionRange(editor.value.length, editor.value.length);
