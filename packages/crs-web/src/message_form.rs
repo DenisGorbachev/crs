@@ -15,7 +15,7 @@ pub fn MessageForm(source: String, thread_id: Option<String>, #[props(default = 
             input { r#type: "hidden", name: "thread_id", value: "{id}" }
             p { id: "direct-input-notice", hidden: writable, "This thread does not accept direct messages." }
         }
-        Textarea { aria_label: label, id: "message", name: "message", rows: "2", required: true, disabled: !writable, hidden: !writable }
+        Textarea { aria_label: label, id: "message", name: "message", required: true, disabled: !writable, hidden: !writable }
         div { class: "controls flex items-center gap-2",
             ThreadControls { source: UrlSegment { value: source.clone() }, thread_id }
             VoiceControls {}

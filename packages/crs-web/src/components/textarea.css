@@ -16,12 +16,10 @@
   transition: background-color 100ms ease-out, border-color 100ms ease-out, box-shadow 100ms ease-out;
 }
 
-.dx-textarea[rows="2"]:focus { block-size: 4lh; }
-.dx-textarea[rows="3"]:focus { block-size: 6lh; }
+.dx-textarea:focus { block-size: 6lh; }
 
 /* Reserve expansion space above inline editors so their buttons stay under the pointer on blur. */
-form:not(.thread-draft) > .dx-textarea[rows="2"]:not(:focus) { margin-block-start: 2lh; }
-form:not(.thread-draft) > .dx-textarea[rows="3"]:not(:focus) { margin-block-start: 3lh; }
+form:not(.thread-draft) > .dx-textarea:not(:focus) { margin-block-start: 3lh; }
 
 .dx-textarea:disabled {
   color: var(--secondary-color-5);

@@ -280,7 +280,7 @@ impl CodexSync {
                     archived,
                     last_turn_id: None,
                     last_item_anchor: None,
-                    turn_versions: None,
+                    turn_versions: Vec::new(),
                     read_state: read_states.remove(&thread.id),
                     thread,
                 };
@@ -305,7 +305,7 @@ impl CodexSync {
 
     async fn save_thread(&self, client: &CodexConnection, record: ThreadRecord, guard: OwnedMutexGuard<()>) -> Result<(), CodexSyncSaveThreadError> {
         use CodexSyncSaveThreadError::*;
-        let history = handle!(ThreadHistory::fetch(client, &record.thread).await, FetchFailed);
+        let history = handle!(ThreadHistory::fetch(client, &record.thread.id).await, FetchFailed);
         let id = record.thread.id.clone();
         let viewed = self.viewed.clone();
         let store = self.store.clone();

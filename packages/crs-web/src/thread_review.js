@@ -1,7 +1,7 @@
 import { threadQueue } from "/thread-queue.js";
 import { voiceInput } from "/voice.js";
 
-const segmenter = typeof Intl.Segmenter === "function" && new Intl.Segmenter(undefined, { granularity: "sentence" });
+const segmenter = new Intl.Segmenter(undefined, { granularity: "sentence" });
 const quotations = new WeakMap();
 
 function mark(element, quotation, first = true) {
@@ -22,8 +22,7 @@ function prepareProse(root) {
     let text = "";
     function flush() {
         const prose = text.replace(/\n/g, " ");
-        const sentences = segmenter ? segmenter.segment(prose) : prose.matchAll(/[^.!?。！？]+[.!?。！？]*\s*|[.!?。！？]+/gu);
-        const iterator = sentences[Symbol.iterator]();
+        const iterator = segmenter.segment(prose)[Symbol.iterator]();
         let sentence = iterator.next().value;
         let first = true;
         for (const { node, start, length } of pieces) {
@@ -32,8 +31,7 @@ function prepareProse(root) {
             let pos = start;
             const fragment = document.createDocumentFragment();
             while (sentence && pos < end) {
-                const original = sentence.segment ?? sentence[0];
-                const boundary = sentence.index + original.length;
+                const boundary = sentence.index + sentence.segment.length;
                 if (pos >= boundary) {
                     sentence = iterator.next().value;
                     first = true;

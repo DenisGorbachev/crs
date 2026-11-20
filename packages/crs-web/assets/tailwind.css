@@ -6,8 +6,6 @@
     --color-neutral-800: oklch(26.9% 0 0);
     --color-white: #fff;
     --spacing: 0.25rem;
-    --text-xs: 0.75rem;
-    --text-xs--line-height: calc(1 / 0.75);
     --text-sm: 0.875rem;
     --text-sm--line-height: calc(1.25 / 0.875);
     --radius-3xl: 1.5rem;
@@ -31,9 +29,6 @@
   }
   .ms-auto {
     margin-inline-start: auto;
-  }
-  .mt-1 {
-    margin-top: calc(var(--spacing) * 1);
   }
   .box-border {
     box-sizing: border-box;
@@ -104,10 +99,6 @@
   .text-sm {
     font-size: var(--text-sm);
     line-height: var(--tw-leading, var(--text-sm--line-height));
-  }
-  .text-xs {
-    font-size: var(--text-xs);
-    line-height: var(--tw-leading, var(--text-xs--line-height));
   }
   .whitespace-pre-wrap {
     white-space: pre-wrap;
@@ -416,16 +407,10 @@
     resize: none;
     transition: background-color 100ms ease-out, border-color 100ms ease-out, box-shadow 100ms ease-out;
   }
-  .dx-textarea[rows="2"]:focus {
-    block-size: 4lh;
-  }
-  .dx-textarea[rows="3"]:focus {
+  .dx-textarea:focus {
     block-size: 6lh;
   }
-  form:not(.thread-draft) > .dx-textarea[rows="2"]:not(:focus) {
-    margin-block-start: 2lh;
-  }
-  form:not(.thread-draft) > .dx-textarea[rows="3"]:not(:focus) {
+  form:not(.thread-draft) > .dx-textarea:not(:focus) {
     margin-block-start: 3lh;
   }
   .dx-textarea:disabled {
@@ -670,6 +655,9 @@ body:has(#thread-review) {
 #thread-review :is(section, article[data-response]) {
   scroll-margin-top: 8px;
 }
+#turns > section:empty {
+  margin: 0;
+}
 article[aria-current="true"] {
   position: relative;
 }
@@ -686,7 +674,7 @@ article[aria-current="true"]::before {
 .thread-draft:has(#message:disabled) #quote-mode {
   display: none;
 }
-.item-details > summary, .activity-item > summary {
+.activity-item > summary {
   color: color-mix(in srgb, CanvasText 70%, Canvas);
 }
 .chat-message {
@@ -699,9 +687,6 @@ article[aria-current="true"]::before {
   margin-inline-start: auto;
   width: fit-content;
   max-width: 85%;
-}
-[data-response="User"] .item-details > summary {
-  text-align: end;
 }
 .user-bubble a {
   color: #bddeff;

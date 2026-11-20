@@ -31,6 +31,7 @@ pub fn Textarea(
     rsx! {
         textarea {
             class: "dx-textarea",
+            rows: "3",
             "data-slot": "textarea",
             "data-style": variant.class(),
             ..attributes,

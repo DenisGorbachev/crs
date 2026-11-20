@@ -27,7 +27,7 @@ impl From<(&str, ThreadRecord)> for ThreadSummary {
             cwd: record.thread.cwd,
             updated_at: record.thread.updated_at,
             last_turn_id: record.last_turn_id,
-            last_item_anchor: record.last_item_anchor.filter(|anchor| !anchor.is_empty()),
+            last_item_anchor: record.last_item_anchor,
         }
     }
 }

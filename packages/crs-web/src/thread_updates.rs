@@ -39,7 +39,7 @@ impl ThreadUpdates {
             }
         };
         let queue = Some(queue.as_ref()).filter(|queue| Some(&queue.version) != self.queue_version.as_ref());
-        if record.turn_versions.as_ref() == Some(&self.versions) {
+        if record.turn_versions == self.versions {
             return Ok(if header.is_some() || queue.is_some() {
                 Json((self.versions.len(), Vec::<(usize, String)>::new(), header, queue)).into_response()
             } else {
@@ -47,7 +47,7 @@ impl ThreadUpdates {
             });
         }
         let page = handle!(store.page(&snapshot, &self.source, record), PageFailed);
-        let versions = &page.versions;
+        let versions = &page.record.turn_versions;
         let files = FileLinks::from((self.source.as_str(), &page.record.thread.cwd));
         let turns = handle!(render_turns(page.turns, versions, &self.versions, &files), RenderTurnsFailed);
         let html: Vec<_> = turns

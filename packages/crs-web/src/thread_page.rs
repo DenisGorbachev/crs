@@ -8,7 +8,6 @@ use tokio::task::spawn_blocking;
 use tracing::error;
 
 pub struct ThreadPage {
-    pub versions: Vec<String>,
     pub record: ThreadRecord,
     pub turns: Vec<Turn>,
 }
@@ -17,12 +16,11 @@ impl ThreadPage {
     pub fn render(self, source: &str) -> Result<Element, ThreadPageRenderError> {
         use ThreadPageRenderError::*;
         let Self {
-            versions,
             mut record,
             turns,
         } = self;
         let files = FileLinks::from((source, &record.thread.cwd));
-        let turns = handle!(render_turns(turns, &versions, &[], &files), RenderTurnsFailed);
+        let turns = handle!(render_turns(turns, &record.turn_versions, &[], &files), RenderTurnsFailed);
         let has_turns = !turns.is_empty();
         record.thread.turns.clear();
         let header = handle!(ThreadHeader::try_from(&record), EncodeRecordFailed);
@@ -65,7 +63,6 @@ pub fn render_turns(history: Vec<Turn>, versions: &[String], known: &[String], f
             rsx! {
                 section { id: turn_anchor(&turn.id), "data-turn-id": turn.id.as_str(), "data-in-progress": (turn.status == codex_app_server_protocol::TurnStatus::InProgress).to_string(), "data-version": version.as_str(),
                     if let Some(error) = &turn.error { p { role: "alert", "{error.message}" } }
-                    if transcript.is_empty() { p { "No visible items in this turn." } }
                     {transcript.into_iter()}
                 }
             },

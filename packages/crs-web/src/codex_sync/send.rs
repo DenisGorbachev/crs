@@ -1,5 +1,5 @@
 use crate::{CodexConnection, CodexConnectionRequestError, CodexSync, QueuedMessage, Route, ThreadHistory, ThreadRecord, ThreadStoreRecordError, ThreadStoreWriteError, UrlSegment};
-use codex_app_server_protocol::{ClientRequest, RequestId, ThreadQueueAddParams, ThreadQueueAddResponse, ThreadResumeParams, ThreadResumeResponse, ThreadStartParams, ThreadStartResponse, TurnStartParams, TurnStartResponse, UserInput};
+use codex_app_server_protocol::{ClientRequest, RequestId, ThreadHistoryMode, ThreadQueueAddParams, ThreadQueueAddResponse, ThreadResumeParams, ThreadResumeResponse, ThreadStartParams, ThreadStartResponse, TurnStartParams, TurnStartResponse, UserInput};
 use errgonomic::{handle, handle_bool};
 use thiserror::Error;
 use tokio::task::{JoinError, spawn_blocking};
@@ -24,7 +24,10 @@ impl CodexSync {
                     client
                         .request::<ThreadStartResponse>(ClientRequest::ThreadStart {
                             request_id: RequestId::String(Uuid::new_v4().to_string()),
-                            params: ThreadStartParams::default(),
+                            params: ThreadStartParams {
+                                history_mode: Some(ThreadHistoryMode::Paginated),
+                                ..ThreadStartParams::default()
+                            },
                         })
                         .await,
                     StartThreadFailed
@@ -34,7 +37,7 @@ impl CodexSync {
                     read_state: None,
                     last_turn_id: None,
                     last_item_anchor: None,
-                    turn_versions: None,
+                    turn_versions: Vec::new(),
                     thread: response.thread,
                 }
             }

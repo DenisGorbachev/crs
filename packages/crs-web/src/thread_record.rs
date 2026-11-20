@@ -12,8 +12,7 @@ pub struct ThreadRecord {
     pub last_turn_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_item_anchor: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub turn_versions: Option<Vec<String>>,
+    pub turn_versions: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub read_state: Option<ThreadReadState>,
     pub thread: Thread,
@@ -22,12 +21,11 @@ pub struct ThreadRecord {
 impl ThreadRecord {
     pub fn update_anchors(&mut self, turns: &[Turn]) {
         self.last_turn_id = turns.last().map(|turn| turn.id.clone());
-        let last_item = turns.iter().rev().find_map(|turn| {
+        self.last_item_anchor = turns.iter().rev().find_map(|turn| {
             turn.items
                 .last()
                 .map(|item| item_anchor(&turn.id, item.id()))
         });
-        self.last_item_anchor = Some(last_item.unwrap_or_default());
     }
 
     pub async fn refresh_metadata(&mut self, client: &CodexConnection) -> Result<bool, ThreadRecordRefreshMetadataError> {

@@ -1,5 +1,5 @@
 use crate::{CodexConnection, FetchPagesError, canonical_json, content_version, fetch_pages};
-use codex_app_server_protocol::{ClientRequest, RequestId, SortDirection, Thread, ThreadHistoryMode, ThreadItem, ThreadItemEntry, ThreadItemPayload, ThreadItemsListCursor, ThreadItemsListParams, ThreadItemsListResponse, ThreadTurnsListParams, ThreadTurnsListResponse, Turn, TurnItemsView};
+use codex_app_server_protocol::{ClientRequest, RequestId, SortDirection, ThreadItem, ThreadItemEntry, ThreadItemPayload, ThreadItemsListCursor, ThreadItemsListParams, ThreadItemsListResponse, ThreadTurnsListParams, ThreadTurnsListResponse, Turn, TurnItemsView};
 use errgonomic::{handle, handle_bool, handle_opt};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -19,25 +19,23 @@ impl ThreadHistory {
             mut turns,
             items,
         } = self;
-        let mut by_id: HashMap<_, _> = turns
-            .iter_mut()
-            .map(|turn| (turn.id.as_str(), &mut turn.items))
-            .collect();
+        let mut by_id = HashMap::with_capacity(turns.len());
+        for turn in &mut turns {
+            handle_bool!(turn.items_view != TurnItemsView::NotLoaded || !turn.items.is_empty(), TurnItemsInvalid, id: turn.id.as_str());
+            by_id.insert(turn.id.as_str(), &mut turn.items);
+        }
         for entry in items {
             let dest = handle_opt!(by_id.get_mut(entry.turn_id.as_str()), TurnNotFound, id: entry.turn_id);
-            dest.push(handle!(ThreadItem::try_from(entry), DeferredOutputInvalid));
-        }
-        for turn in &mut turns {
-            turn.items
-                .retain(|item| !matches!(item.payload, ThreadItemPayload::Reasoning { .. }));
+            let item = handle!(ThreadItem::try_from(entry), DeferredOutputInvalid);
+            if is_transcript_item(&item.payload) {
+                dest.push(item);
+            }
         }
         Ok(turns)
     }
 
-    pub async fn fetch(client: &CodexConnection, thread: &Thread) -> Result<Self, ThreadHistoryFetchError> {
+    pub async fn fetch(client: &CodexConnection, thread_id: &str) -> Result<Self, ThreadHistoryFetchError> {
         use ThreadHistoryFetchError::*;
-        let thread_id = thread.id.as_str();
-        let legacy = thread.history_mode == ThreadHistoryMode::Legacy;
         let turns = fetch_pages(|cursor| async move {
             let response: ThreadTurnsListResponse = client
                 .request(ClientRequest::ThreadTurnsList {
@@ -47,7 +45,7 @@ impl ThreadHistory {
                         cursor,
                         limit: None,
                         sort_direction: Some(SortDirection::Asc),
-                        items_view: Some(if legacy { TurnItemsView::Full } else { TurnItemsView::NotLoaded }),
+                        items_view: Some(TurnItemsView::NotLoaded),
                     },
                 })
                 .await?;
@@ -55,19 +53,6 @@ impl ThreadHistory {
         })
         .await;
         let turns = handle!(turns, FetchTurnPagesFailed, thread_id);
-        if legacy {
-            handle_bool!(
-                turns
-                    .iter()
-                    .any(|turn| turn.items_view != TurnItemsView::Full),
-                LegacyItemsInvalid,
-                thread_id
-            );
-            return Ok(Self {
-                turns,
-                items: Vec::new(),
-            });
-        }
         let items = fetch_pages(|cursor| async move {
             let response: ThreadItemsListResponse = client
                 .request(ClientRequest::ThreadItemsList {
@@ -102,6 +87,11 @@ impl ThreadHistory {
     }
 }
 
+fn is_transcript_item(payload: &ThreadItemPayload) -> bool {
+    use ThreadItemPayload::*;
+    matches!(payload, UserMessage { .. } | AgentMessage { .. } | Plan { .. } | HookPrompt { .. } | EnteredReviewMode { .. } | ExitedReviewMode { .. } | ContextCompaction { .. })
+}
+
 pub fn turn_versions(turns: &[Turn]) -> Result<Vec<String>, serde_json::Error> {
     turns
         .iter()
@@ -111,6 +101,8 @@ pub fn turn_versions(turns: &[Turn]) -> Result<Vec<String>, serde_json::Error> {
 
 #[derive(Error, Debug)]
 pub enum ThreadHistoryIntoVisibleTurnsError {
+    #[error("expected turn metadata without embedded items for '{id}'")]
+    TurnItemsInvalid { id: String },
     #[error("saved thread contains deferred item output")]
     DeferredOutputInvalid { source: codex_app_server_protocol::DeferredItemOutput },
     #[error("saved item refers to missing turn '{id}'")]
@@ -123,8 +115,6 @@ pub enum ThreadHistoryFetchError {
     FetchTurnPagesFailed { source: FetchPagesError, thread_id: String },
     #[error("failed to fetch items for Codex thread '{thread_id}'")]
     FetchItemPagesFailed { source: FetchPagesError, thread_id: String },
-    #[error("Codex returned incomplete legacy turns for thread '{thread_id}'")]
-    LegacyItemsInvalid { thread_id: String },
     #[error("Codex deferred item output for thread '{thread_id}'")]
     ItemOutputInvalid { thread_id: String },
     #[error("Codex history changed while downloading thread '{thread_id}'")]

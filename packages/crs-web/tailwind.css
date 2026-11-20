@@ -33,16 +33,16 @@ body:has(#thread-review) { margin: 0; }
 #thread-transcript { display: flex; flex-direction: column-reverse; overflow: auto; overscroll-behavior-y: contain; padding: 2rem 1rem; }
 #thread-transcript > div { flex: none; min-block-size: 100%; }
 #thread-review :is(section, article[data-response]) { scroll-margin-top: 8px; }
+#turns > section:empty { margin: 0; }
 article[aria-current="true"] { position: relative; }
 article[aria-current="true"]::before {
     content: ""; background: Highlight;
     @apply absolute -start-3 top-2 size-1.5 rounded-full;
 }
 .thread-draft:has(#message:disabled) #quote-mode { display: none; }
-.item-details > summary, .activity-item > summary { color: color-mix(in srgb, CanvasText 70%, Canvas); }
+.activity-item > summary { color: color-mix(in srgb, CanvasText 70%, Canvas); }
 .chat-message { display: block; padding: 0; border: 0; font-size: inherit; }
 [data-response="User"] { @apply ms-auto w-fit max-w-[85%]; }
-[data-response="User"] .item-details > summary { text-align: end; }
 .user-bubble a { color: #bddeff; }
 .user-bubble .markdown + .markdown { margin-block-start: .75rem; }
 .markdown > :first-child { margin-block-start: 0; }

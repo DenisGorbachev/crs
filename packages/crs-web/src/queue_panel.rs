@@ -21,7 +21,7 @@ pub fn QueuePanel() -> Element {
                     }
                 }
                 form { hidden: true, "data-queue-editor": "",
-                    Textarea { aria_label: "Edit queued message", rows: "3", required: true }
+                    Textarea { aria_label: "Edit queued message", required: true }
                     div { class: "flex justify-end gap-1",
                         Button { r#type: "button", variant: ButtonVariant::Ghost, size: ButtonSize::Sm, "data-queue-action": "discard", "Discard edit" }
                         Button { r#type: "submit", size: ButtonSize::Sm, "Save edit" }
