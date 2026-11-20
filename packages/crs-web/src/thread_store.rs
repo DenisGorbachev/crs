@@ -69,10 +69,10 @@ impl ThreadStore {
 
     pub fn write(&self, server_id: &str, mut record: ThreadRecord, history: ThreadHistory) -> Result<bool, ThreadStoreWriteError> {
         use ThreadStoreWriteError::*;
-        record.last_turn_id = history.last_turn_id().map(str::to_owned);
+        let bytes = handle!(canonical_json(&history).and_then(|json| serde_json::to_vec(&json)), EncodeHistoryFailed, server_id, thread_id: record.thread.id);
+        let turns = handle!(history.into_visible_turns(), IntoVisibleTurnsFailed, server_id, thread_id: record.thread.id);
+        record.update_anchors(&turns);
         let thread_id = record.thread.id.as_str();
-        let bytes = handle!(canonical_json(&history).and_then(|json| serde_json::to_vec(&json)), EncodeHistoryFailed, server_id, thread_id);
-        let turns = handle!(history.into_visible_turns(), IntoVisibleTurnsFailed, server_id, thread_id);
         record.turn_versions = Some(handle!(turn_versions(&turns), EncodeVersionsFailed, server_id, thread_id));
         let key = format!("{server_id}\0{thread_id}");
         let record = handle!(canonical_json(&record).and_then(|json| serde_json::to_vec(&json)), EncodeRecordFailed, server_id, thread_id);
@@ -167,13 +167,13 @@ impl ThreadStore {
                 snapshot
                     .prefix(&self.records, format!("{server_id}\0"))
                     .try_for_each(|entry| {
-                        let (key, bytes) = handle!(entry.into_inner(), IntoInnerFailed, server_id);
+                        let bytes = handle!(entry.value(), ReadRecordFailed, server_id);
                         let mut record: ThreadRecord = handle!(serde_json::from_slice(&bytes), FromSliceFailed, server_id);
                         if record.is_parent() && config.includes_thread(record.thread.created_at) {
-                            if record.last_turn_id.is_none() {
-                                let bytes = handle_opt!(handle!(snapshot.get(&self.histories, key), GetHistoryFailed, server_id), HistoryNotFound, server_id);
-                                let history: ThreadHistory = handle!(serde_json::from_slice(&bytes), DecodeHistoryFailed, server_id);
-                                record.last_turn_id = history.last_turn_id().map(str::to_owned);
+                            if record.last_item_anchor.is_none() {
+                                let page = handle!(self.page(&snapshot, server_id, record), PageFailed, server_id);
+                                record = page.record;
+                                record.update_anchors(&page.turns);
                             }
                             threads.push(ThreadSummary::from((server_id, record)));
                         }
@@ -220,14 +220,10 @@ pub enum ThreadStoreWriteError {
 
 #[derive(Error, Debug)]
 pub enum ThreadStoreListError {
-    #[error("failed to read saved history from '{server_id}'")]
-    GetHistoryFailed { source: fjall::Error, server_id: String },
-    #[error("missing saved history from '{server_id}'")]
-    HistoryNotFound { server_id: String },
-    #[error("failed to decode saved history from '{server_id}'")]
-    DecodeHistoryFailed { source: serde_json::Error, server_id: String },
+    #[error("failed to read saved thread items from '{server_id}'")]
+    PageFailed { source: ThreadStorePageError, server_id: String },
     #[error("failed to read a saved Codex thread from '{server_id}'")]
-    IntoInnerFailed { source: fjall::Error, server_id: String },
+    ReadRecordFailed { source: fjall::Error, server_id: String },
     #[error("failed to decode a saved Codex thread from '{server_id}'")]
     FromSliceFailed { source: serde_json::Error, server_id: String },
 }

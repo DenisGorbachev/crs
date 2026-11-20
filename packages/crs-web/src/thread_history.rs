@@ -13,10 +13,6 @@ pub struct ThreadHistory {
 }
 
 impl ThreadHistory {
-    pub fn last_turn_id(&self) -> Option<&str> {
-        self.turns.last().map(|turn| turn.id.as_str())
-    }
-
     pub fn into_visible_turns(self) -> Result<Vec<Turn>, ThreadHistoryIntoVisibleTurnsError> {
         use ThreadHistoryIntoVisibleTurnsError::*;
         let Self {

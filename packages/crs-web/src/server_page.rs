@@ -46,7 +46,7 @@ pub fn ServerPage(source: ReadSignal<UrlSegment>) -> Element {
                         Item { key: "{thread.id}", role: "listitem", size: ItemSize::Sm,
                             ItemContent {
                                 ItemTitle {
-                                    Link { to: Route::thread(source(), thread.id.clone(), thread.last_turn_id.as_deref()), "{thread.title}" }
+                                    Link { to: Route::thread_at(source(), thread.id.clone(), thread.last_item_anchor.as_deref()), "{thread.title}" }
                                     if thread.archived { " · Archived" }
                                 }
                                 ItemDescription { "{thread.cwd.display()}" }

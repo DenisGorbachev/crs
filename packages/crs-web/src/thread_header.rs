@@ -18,6 +18,7 @@ impl TryFrom<&ThreadRecord> for ThreadHeader {
         let mut json = canonical_json(record)?;
         if let Some(fields) = json.as_object_mut() {
             fields.remove("turn_versions");
+            fields.remove("last_item_anchor");
         }
         let version = content_version(&json);
         Ok(Self {

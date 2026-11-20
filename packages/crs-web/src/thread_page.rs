@@ -2,7 +2,6 @@ use crate::{Config, Disclosure, FileLinks, MessageForm, PageNav, QueuePanel, Thr
 use codex_app_server_protocol::Turn;
 use dioxus::prelude::*;
 use errgonomic::{ErrorDisplayer, handle};
-use std::mem::take;
 use std::sync::Arc;
 use thiserror::Error;
 use tokio::task::spawn_blocking;
@@ -48,26 +47,20 @@ impl ThreadPage {
 pub fn render_turns(history: Vec<Turn>, versions: &[String], known: &[String], files: &FileLinks) -> Result<Vec<(usize, Element)>, RenderTurnsError> {
     use RenderTurnsError::*;
     let mut turns = Vec::new();
-    for (number, ((index, mut turn), version)) in (1usize..).zip(history.into_iter().enumerate().zip(versions)) {
+    for (index, (turn, version)) in history.into_iter().zip(versions).enumerate() {
         if known.get(index) == Some(version) {
             continue;
         }
 
         let mut transcript = Vec::new();
-        for item in take(&mut turn.items) {
-            transcript.push(thread_item_view(handle!(serde_json::to_value(item), EncodeItemFailed), files));
-        }
-        let mut metadata = handle!(serde_json::to_value(&turn), EncodeTurnFailed);
-        if let Some(fields) = metadata.as_object_mut() {
-            fields.remove("items");
+        for item in turn.items {
+            transcript.push(thread_item_view(&turn.id, handle!(serde_json::to_value(item), EncodeItemFailed), files));
         }
         turns.push((
             index,
             rsx! {
                 section { id: turn_anchor(&turn.id), "data-turn-id": turn.id.as_str(), "data-in-progress": (turn.status == codex_app_server_protocol::TurnStatus::InProgress).to_string(), "data-version": version.as_str(),
-                    h2 { "Turn {number}" }
                     if let Some(error) = &turn.error { p { role: "alert", "{error.message}" } }
-                    Disclosure { label: rsx! { "Turn details · {turn.status:?}" }, pre { "{metadata:#}" } }
                     if transcript.is_empty() { p { "No visible items in this turn." } }
                     {transcript.into_iter()}
                 }
@@ -130,6 +123,4 @@ pub enum ThreadPageRenderError {
 pub enum RenderTurnsError {
     #[error("failed to encode thread item")]
     EncodeItemFailed { source: serde_json::Error },
-    #[error("failed to encode turn metadata")]
-    EncodeTurnFailed { source: serde_json::Error },
 }

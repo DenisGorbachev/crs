@@ -279,6 +279,7 @@ impl CodexSync {
                 let mut record = ThreadRecord {
                     archived,
                     last_turn_id: None,
+                    last_item_anchor: None,
                     turn_versions: None,
                     read_state: read_states.remove(&thread.id),
                     thread,

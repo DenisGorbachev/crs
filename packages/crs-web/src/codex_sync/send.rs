@@ -33,6 +33,7 @@ impl CodexSync {
                     archived: false,
                     read_state: None,
                     last_turn_id: None,
+                    last_item_anchor: None,
                     turn_versions: None,
                     thread: response.thread,
                 }

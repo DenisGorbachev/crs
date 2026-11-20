@@ -1,9 +1,9 @@
-use crate::{ChatMessage, Disclosure, FileLinks, content_version, markdown_view};
+use crate::{ChatMessage, Disclosure, FileLinks, content_version, item_anchor, markdown_view};
 use dioxus::prelude::*;
 use serde_json::Value;
 use std::mem::take;
 
-pub fn thread_item_view(mut item: Value, files: &FileLinks) -> Element {
+pub fn thread_item_view(turn_id: &str, mut item: Value, files: &FileLinks) -> Element {
     let version = content_version(&item);
     let Some(fields) = item.as_object_mut() else { return structured_value(&item) };
     let id = fields
@@ -11,6 +11,7 @@ pub fn thread_item_view(mut item: Value, files: &FileLinks) -> Element {
         .and_then(Value::as_str)
         .unwrap_or_default()
         .to_owned();
+    let anchor = item_anchor(turn_id, &id);
     let kind = fields.remove("type").unwrap_or_default();
     let speaker = match kind.as_str() {
         Some("userMessage") => Some("User"),
@@ -71,12 +72,12 @@ pub fn thread_item_view(mut item: Value, files: &FileLinks) -> Element {
     };
     if let Some(speaker) = speaker {
         let client_id = item.get("clientId").and_then(Value::as_str);
-        rsx! { ChatMessage { speaker, "data-item": id, "data-version": version, "data-client-id": client_id,
+        rsx! { ChatMessage { speaker, id: anchor, "data-item": id, "data-version": version, "data-client-id": client_id,
             {body}
             {item_details(&item)}
         } }
     } else {
-        rsx! { Disclosure { class: "activity-item my-3", "data-item": id, "data-version": version, summary_class: "list-inside truncate text-sm",
+        rsx! { Disclosure { class: "activity-item my-3", id: anchor, "data-item": id, "data-version": version, summary_class: "list-inside truncate text-sm",
             label: rsx! {
                 if kind == "commandExecution" { code { "{preview}" } } else { "{preview}" }
             },
