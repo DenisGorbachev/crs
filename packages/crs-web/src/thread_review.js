@@ -358,6 +358,7 @@ function composer(transcript, form, queue) {
             draft.acknowledge(submitted);
             editor.value = "";
             status.textContent = "";
+            transcript.scrollTop = 0;
         } catch {
             status.textContent = "Could not confirm delivery. Check the thread before sending again.";
         } finally {
