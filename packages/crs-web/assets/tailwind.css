@@ -552,7 +552,7 @@
 }
 :root {
   color-scheme: light dark;
-  font: 100%/1.5 "Source Sans 3", system-ui, sans-serif;
+  font: calc(100% + 2pt)/1.5 "Source Sans 3", system-ui, sans-serif;
 }
 main {
   max-width: 72ch;
