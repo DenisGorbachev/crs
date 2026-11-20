@@ -18,7 +18,6 @@ details:not([open]) > :not(summary) { display: none; }
 dt { font-weight: 600; }
 dd, ol { margin: 0 0 .5rem; padding-inline-start: 1rem; }
 form { display: grid; gap: .5rem; margin-block: 1.5rem; }
-textarea { box-sizing: border-box; width: 100%; resize: vertical; padding: .5rem; font: inherit; }
 :is(.dx-textarea, .dx-button):focus-visible { outline: 2px solid Highlight; outline-offset: 1px; }
 .dx-item-description { display: block; overflow: visible; }
 .icon-button {
@@ -29,7 +28,10 @@ textarea { box-sizing: border-box; width: 100%; resize: vertical; padding: .5rem
 .icon-button[aria-pressed="true"] { color: Canvas; background: CanvasText; }
 .icon-button:disabled { opacity: .55; }
 [hidden] { display: none !important; }
-#thread-review { padding-bottom: calc(2rem + var(--draft-space, 0px)); }
+body:has(#thread-review) { margin: 0; }
+#thread-review { display: grid; grid-template-rows: 1fr auto; height: 100dvh; max-width: 76ch; margin: 0 auto; padding: 0; }
+#thread-transcript { display: flex; flex-direction: column-reverse; overflow: auto; overscroll-behavior-y: contain; padding: 2rem 1rem; }
+#thread-transcript > div { flex: none; min-block-size: 100%; }
 #thread-review :is(section, article[data-response]) { scroll-margin-top: 8px; }
 article[aria-current="true"] { position: relative; }
 article[aria-current="true"]::before {
@@ -51,14 +53,12 @@ article[aria-current="true"]::before {
 .markdown blockquote { border-inline-start: 2px solid GrayText; margin-inline: .5rem; padding-inline: .75rem; }
 .markdown pre { white-space: pre; overflow: auto; padding: .75rem; background: color-mix(in srgb, CanvasText 6%, Canvas); }
 .quote-chunk[role="button"]:focus-visible { background: Highlight; color: HighlightText; }
-.has-draft .thread-draft {
-    position: fixed; z-index: 20; bottom: var(--draft-bottom, 0px); inset-inline: 0; box-sizing: border-box; max-width: 76ch;
-    margin: 0 auto; background: Canvas; border-top: 1px solid GrayText; padding: .4rem 1rem max(.4rem, env(safe-area-inset-bottom));
-    max-height: min(45dvh, var(--visible-height, 100dvh)); overflow: auto; gap: .25rem;
+.thread-draft {
+    margin: 0; border-top: 1px solid GrayText; padding: .4rem 1rem max(.4rem, env(safe-area-inset-bottom));
+    overflow: auto; grid-auto-rows: max-content; gap: .25rem;
 }
-.has-draft textarea { height: 3rem; min-height: 2rem; max-height: 18dvh; resize: none; }
-.has-draft .thread-draft.editing textarea { height: 8rem; }
 @media (max-width: 36rem) {
     main { margin-top: .5rem; }
-    .has-draft .thread-draft { padding-inline: .6rem; }
+    #thread-transcript { padding-top: .5rem; }
+    .thread-draft { padding-inline: .6rem; }
 }

@@ -167,8 +167,7 @@ function arrowNavigation(container, selector) {
     return sync;
 }
 
-function navigation(root) {
-    const controls = root.querySelector('.thread-draft [role="toolbar"]');
+function navigation(transcript, controls) {
     let selected;
     let lastScroll;
     function select(message) {
@@ -181,16 +180,16 @@ function navigation(root) {
     controls.addEventListener("click", event => {
         const direction = event.target.closest("button")?.dataset.go;
         switch (direction) {
-            case "first": select(null); window.scrollTo(0, 0); break;
-            case "last": select(null); window.scrollTo(0, document.documentElement.scrollHeight); break;
+            case "first": select(null); transcript.firstElementChild.scrollIntoView({ block: "start" }); break;
+            case "last": select(null); transcript.scrollTop = 0; break;
             case "previous":
             case "next": {
-                const top = 8;
-                const messages = Array.from(root.querySelectorAll("article[data-response]"));
-                selected = root.querySelector('article[aria-current="true"]');
+                const top = transcript.getBoundingClientRect().top + 8;
+                const messages = Array.from(transcript.querySelectorAll("article[data-response]"));
+                selected = transcript.querySelector('article[aria-current="true"]');
                 const previous = direction === "previous";
                 let target;
-                if (selected && Math.abs(window.scrollY - lastScroll) < 2) {
+                if (selected && Math.abs(transcript.scrollTop - lastScroll) < 2) {
                     target = messages[messages.indexOf(selected) + (previous ? -1 : 1)];
                 } else {
                     target = previous
@@ -200,7 +199,7 @@ function navigation(root) {
                 if (target) {
                     select(target);
                     target.scrollIntoView({ block: "start" });
-                    lastScroll = window.scrollY;
+                    lastScroll = transcript.scrollTop;
                 }
                 break;
             }
@@ -296,68 +295,35 @@ function prepareQuotes(scope, enabled) {
     }
 }
 
-function atTranscriptBottom() {
-    const page = document.scrollingElement ?? document.documentElement;
-    return page.scrollHeight - page.clientHeight - page.scrollTop <= 4;
-}
-
-function positionComposer(root, form) {
-    root.classList.add("has-draft");
-    const viewport = window.visualViewport;
-    function syncViewport() {
-        const page = document.scrollingElement ?? document.documentElement;
-        const follow = atTranscriptBottom();
-        const track = viewport && (viewport.scale === 1 || form.classList.contains("editing"));
-        const inset = track ? Math.max(0, page.clientHeight - viewport.offsetTop - viewport.height) : 0;
-        root.style.setProperty("--visible-height", track ? viewport.height + "px" : "100dvh");
-        root.style.setProperty("--draft-bottom", inset + "px");
-        const space = (form.offsetHeight + inset) + "px";
-        if (root.style.getPropertyValue("--draft-space") !== space) {
-            root.style.setProperty("--draft-space", space);
-            if (follow) page.scrollTop = page.scrollHeight;
-        }
-    }
-    new ResizeObserver(syncViewport).observe(form);
-    viewport?.addEventListener("resize", syncViewport);
-    viewport?.addEventListener("scroll", syncViewport);
-    window.addEventListener("resize", syncViewport);
-    form.addEventListener("focusin", syncViewport);
-    form.addEventListener("focusout", syncViewport);
-    syncViewport();
-}
-
-function composer(root, form, syncControls, queue) {
+function composer(transcript, form, queue) {
+    const syncControls = navigation(transcript, form.querySelector('[role="toolbar"]'));
     const editor = form.elements.message;
     const quoteButton = form.querySelector("#quote-mode");
     const status = form.querySelector('[role="status"]');
     const send = form.querySelector('[type="submit"]');
     const draft = threadDraft(form, editor, status);
-    editor.addEventListener("focus", () => form.classList.add("editing"));
-    form.addEventListener("focusout", event => {
-        if (!form.contains(event.relatedTarget)) form.classList.remove("editing");
-    });
     function quoting() {
         return !editor.disabled && quoteButton.ariaPressed === "true";
     }
     function syncQuotes(scope) {
         prepareQuotes(scope, quoting());
     }
-    syncQuotes(root);
+    syncQuotes(transcript);
     function setWritable(writable) {
         if (writable === editor.disabled) {
             editor.hidden = editor.disabled = !writable;
             send.hidden = !writable;
             send.disabled = !writable || editor.readOnly;
-            root.querySelector("#direct-input-notice").hidden = writable;
+            form.querySelector("#direct-input-notice").hidden = writable;
             syncControls();
-            syncQuotes(root);
+            syncQuotes(transcript);
         }
     }
     quoteButton.addEventListener("click", () => {
         const enabled = !quoting();
         quoteButton.ariaPressed = String(enabled);
         quoteButton.dataset.state = enabled ? "on" : "off";
-        syncQuotes(root);
+        syncQuotes(transcript);
     });
     function insert(event) {
         if (!quoting() || editor.readOnly || event.target.closest("a[href]")) return;
@@ -372,8 +338,8 @@ function composer(root, form, syncControls, queue) {
         editor.setSelectionRange(editor.value.length, editor.value.length);
         editor.scrollTop = editor.scrollHeight;
     }
-    root.addEventListener("click", insert);
-    root.addEventListener("keydown", event => {
+    transcript.addEventListener("click", insert);
+    transcript.addEventListener("keydown", event => {
         if (event.key === "Enter" || event.key === " ") insert(event);
     });
     form.addEventListener("submit", async event => {
@@ -390,12 +356,10 @@ function composer(root, form, syncControls, queue) {
                 status.textContent = await response.text();
                 return;
             }
-            const follow = atTranscriptBottom();
             queue.accepted(await response.json());
             draft.acknowledge(submitted);
             editor.value = "";
             status.textContent = "";
-            if (follow) window.scrollTo(0, document.documentElement.scrollHeight);
         } catch {
             status.textContent = "Could not confirm delivery. Check the thread before sending again.";
         } finally {
@@ -403,7 +367,6 @@ function composer(root, form, syncControls, queue) {
             editor.readOnly = false;
         }
     });
-    positionComposer(root, form);
     return { setWritable, syncQuotes };
 }
 
@@ -444,7 +407,8 @@ function patchTurn(current, next) {
 
 function liveTranscript(root, form) {
     const queue = threadQueue(root, refresh);
-    const {setWritable, syncQuotes} = composer(root, form, navigation(root), queue);
+    const transcript = root.querySelector("#thread-transcript");
+    const {setWritable, syncQuotes} = composer(transcript, form, queue);
     const turns = root.querySelector("#turns");
     if (!turns) return;
     const metadata = root.querySelector("#thread-metadata");
@@ -458,7 +422,6 @@ function liveTranscript(root, form) {
         if (response.status === 204) return;
         if (!response.ok) throw new Error("Thread updates returned HTTP " + response.status);
         const [count, changed, header, queued] = await response.json();
-        const follow = atTranscriptBottom();
         if (header) {
             metadata.textContent = header.metadata;
             metadata.dataset.version = header.version;
@@ -479,7 +442,6 @@ function liveTranscript(root, form) {
         while (turns.childElementCount > count) turns.lastElementChild.remove();
         queue.sync(queued);
         root.querySelector("#empty-transcript").hidden = count !== 0;
-        if (follow) window.scrollTo(0, document.documentElement.scrollHeight);
     };
     const status = root.querySelector("#update-status");
     let events;

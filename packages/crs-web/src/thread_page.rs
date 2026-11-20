@@ -29,15 +29,20 @@ impl ThreadPage {
         let title = &header.title;
         Ok(rsx! {
             document::Title { "{title} · CRS-Web" }
-            h1 { id: "thread-title", "{title}" }
-            p { code { "{record.thread.id}" } span { id: "archive-state", hidden: !header.archived, " · Archived" } }
-            Disclosure { label: rsx! { "Thread details" }, pre { id: "thread-metadata", "data-version": header.version, "{header.metadata}" } }
-            p { id: "update-status", role: "status", hidden: true, "Live updates paused. Retrying…" }
-            p { id: "empty-transcript", hidden: has_turns, "No turns in this thread." }
-            div { id: "turns", "data-source": source, "data-thread": record.thread.id.as_str(),
-                {turns.into_iter().map(|(_, turn)| turn)}
+            div { id: "thread-transcript", role: "region", aria_label: "Thread transcript", tabindex: "0",
+                div {
+                    PageNav { source: UrlSegment { value: source.to_owned() } }
+                    h1 { id: "thread-title", "{title}" }
+                    p { code { "{record.thread.id}" } span { id: "archive-state", hidden: !header.archived, " · Archived" } }
+                    Disclosure { label: rsx! { "Thread details" }, pre { id: "thread-metadata", "data-version": header.version, "{header.metadata}" } }
+                    p { id: "update-status", role: "status", hidden: true, "Live updates paused. Retrying…" }
+                    p { id: "empty-transcript", hidden: has_turns, "No turns in this thread." }
+                    div { id: "turns", "data-source": source, "data-thread": record.thread.id.as_str(),
+                        {turns.into_iter().map(|(_, turn)| turn)}
+                    }
+                    QueuePanel {}
+                }
             }
-            QueuePanel {}
             MessageForm { source: source.to_owned(), thread_id: record.thread.id.clone(), writable: header.writable }
         })
     }
@@ -103,9 +108,9 @@ pub fn ThreadView(source: ReadSignal<UrlSegment>, id: ReadSignal<UrlSegment>, an
     let (status, content) = &*data;
     if *status != StatusCode::OK {
         page_error(*status);
+        return rsx! { main { PageNav { source: source() } {content.clone()} } };
     }
     rsx! { main { id: "thread-review", "data-poll-ms": "{poll_ms}",
-        PageNav { source: source() }
         {content.clone()}
     } }
 }
