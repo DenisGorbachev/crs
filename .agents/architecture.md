@@ -2,13 +2,13 @@
 
 ## Clients and backend
 
-The Dioxus web UI and the native CRS CLI use the same backend. Clients send commands over HTTP and receive changes over Server-Sent Events (SSE). One CRS server process serves the web UI, coordinates agent sessions, and synchronizes drafts between devices. Each operation has one backend implementation.
+The Dioxus web UI and the native CRS CLI access the same agent sessions through an ACP endpoint. The CLI connects directly to the endpoint for agent operations. The web application also provides a draft service for editing across devices. Its clients send draft commands over HTTP and receive ownership and sync updates over Server-Sent Events (SSE). The CLI has no dependency on that service or on Dioxus.
 
-Fjall stores shared drafts and the conversation data CRS needs to serve clients. The agent is authoritative for its transcript and turn status. CRS is authoritative for the draft, its current editor, and user input CRS has acknowledged but whose delivery is still pending.
+The agent is authoritative for its transcript and turn status. The web backend uses Fjall for shared drafts, pending web submissions, and the conversation data it caches. A CLI that submits directly retains its input until the agent confirms delivery or the user resolves an uncertain outcome.
 
 ## Sources and agent sessions
 
-Each named source in the application configuration identifies an adapter and where it runs. Session and draft identifiers in CRS include the source because two hosts can have the same agent session ID. One worker per source uses the official Rust `agent-client-protocol` SDK and negotiates ACP v1. Every UI viewing the same session shares that worker's connection.
+Each named source in the application configuration identifies an adapter and where it runs. Session and draft identifiers in CRS include the source because two hosts can have the same agent session ID. One persistent worker per source owns the adapter's stdio connection, uses the official Rust `agent-client-protocol` SDK, and negotiates ACP v1. The worker's lifetime is independent of the Dioxus process and individual CLI invocations. Disconnecting the last UI client during a turn leaves that turn running. An interaction that needs a client can still require someone to reconnect and respond.
 
 | Adapter location | How the worker connects |
 | --- | --- |
@@ -16,13 +16,19 @@ Each named source in the application configuration identifies an adapter and whe
 | On a remote host | Run the adapter with `ssh -T` and use its stdio. |
 | In a local Docker sandbox | Run the adapter with `docker exec -i` and use its stdio. |
 
+The client-facing ACP endpoint and the worker-to-adapter stdio stream are separate connections. A new client attaches to the existing worker for that source. The endpoint routes requests and responses to the correct client, distributes session updates to attached clients, and routes each permission decision once. A reconnecting client can recover history and current activity before following further updates.
+
+`agent-client-protocol-http` provides a Rust `HttpClient` and an `AcpHttpServer` router that supports HTTP/SSE and WebSocket. The router invokes its agent factory for every new ACP connection. If used here, each factory result must attach to the persistent worker. Spawning a stdio adapter in that factory would give the CLI and web application separate agent processes. [SDK server contract](https://github.com/agentclientprotocol/rust-sdk/blob/0fe20235100691d2aa1bc38f729e8ab156338b4f/src/agent-client-protocol-http/src/server.rs#L219-L234)
+
 The supported agents are Codex, Claude Code, and Google Antigravity. On initialization the worker requires both `agentCapabilities.sessionCapabilities.list` and `agentCapabilities.loadSession == true`. If either is missing, report a hard error for that source identifying the adapter and missing capability. Use `session/list` for discovery and `session/load` when CRS needs the agent to replay saved history. [ACP initialization](https://agentclientprotocol.com/protocol/v1/initialization) · [Session listing](https://agentclientprotocol.com/protocol/v1/session-list) · [Loading history](https://agentclientprotocol.com/protocol/v1/session-setup)
 
-When a browser reconnects, it recovers the current CRS view and subscribes to further changes without a gap. If the worker stayed connected, the agent has nothing to reload. If the worker itself reconnects, it reconciles saved history and current activity with the agent before presenting either as current or deciding whether a pending submission was delivered.
+For Claude Code the worker runs the Claude ACP adapter, which uses the Claude Agent SDK and supplies the path to the Claude executable. For Antigravity the worker runs `agy acp`, which speaks ACP directly over stdio. A Dioxus restart leaves these processes running. Recovery after the worker or agent process itself crashes depends on the agent. [Claude adapter](https://github.com/agentclientprotocol/claude-agent-acp/blob/v0.109.0/src/v1/acp-agent.ts#L10269) · [Antigravity ACP entry point](https://antigravity.google/docs/ide/extensions/acp#overview)
+
+When a browser reconnects, it recovers the current view and subscribes to further changes without a gap. If the worker still has the session and its updates, it can supply that view directly. If the worker loses its adapter connection, it reconciles saved history and current activity with the agent before presenting either as current or deciding whether a pending submission was delivered.
 
 ### Codex turn lifetime
 
-The Codex adapter and the stock Codex CLI must attach to the same independently running Codex app-server on the agent host. A CRS restart disconnects its adapter. The daemon continues the active turn. The replacement worker reattaches to the daemon, recovers missed history, and follows any turn still running. A turn that needs client-provided input or a tool may still depend on a connected client. Sharing a Codex home gives separate processes access to saved history, but live events and control belong to the daemon running the turn.
+Keeping the worker alive across a Dioxus restart also keeps the Codex adapter and its child app-server alive. To let the stock Codex CLI participate in the same ongoing turn, the adapter and the stock CLI must both attach to the same independently running Codex app-server on the agent host. If the worker itself restarts in that deployment, its replacement reattaches to the daemon, recovers missed history, and follows any turn still running.
 
 This deployment requires live-peer support in the adapter. Released `codex-acp` v2.8.0 instead starts a private child and shuts it down when ACP stdin closes. Upstream PR #348 implements attachment to an existing daemon and forwarding of turns initiated by another client. How CRS obtains that adapter support is an open decision. [Released adapter lifecycle](https://github.com/agentclientprotocol/codex-acp/blob/v2.8.0/src/index.ts#L64-L86) · [Shared app-server proposal](https://github.com/agentclientprotocol/codex-acp/pull/348)
 
@@ -40,7 +46,7 @@ On handoff the old device can discard its acknowledged copy. If takeover races t
 
 Sending captures the exact draft the user submitted. An idle session can start it immediately. In a busy session, a queued message remains editable and cancellable until dispatch. Steering targets the current turn and is a one-way action. The UI reconciles pending items with the agent transcript when delivery becomes observable.
 
-CRS must preserve user input across client disconnects, server restarts, and lost agent replies. A client may relinquish its only copy after CRS durably acknowledges the exact submitted content. A CRS acknowledgement and confirmed delivery to the agent are separate facts. The persistence and retry strategy for queued and steering messages is still open.
+Clients must preserve user input across disconnects, server restarts, and lost agent replies. A web client may relinquish its only copy after CRS durably acknowledges the exact submitted content. A CRS acknowledgement and confirmed delivery to the agent are separate facts. If a queued or steering message may have reached the agent, reconcile it against authoritative delivery evidence. If the outcome remains ambiguous, show **Delivery unknown**, retain the exact text and intended destination, and let the user decide whether to resend. Never automatically resend an ambiguous submission or redirect a steer to a subsequent turn.
 
 ## File links
 
@@ -48,6 +54,7 @@ Keep the source-scoped file URL and page. Remote file reads are stubbed for this
 
 ## Open decisions
 
-- Choose the HTTP handler framework for the shared API.
+- Choose how to host the persistent workers and expose shared ACP sessions to independently connecting clients.
+- Choose how to implement the web draft service's HTTP handlers.
 - Choose how to ship Codex live-peer support.
-- Choose the submission recovery policy. One candidate gives each send a stable client-generated ID and atomically moves the submitted draft revision into a durable outgoing record. Retrying the HTTP request returns the same record. The worker can retry undispatched records and reconcile in-flight attempts using an adapter-provided identifier. If delivery remains uncertain, the user can inspect the retained text and decide whether to resend. A steering attempt also records its intended turn.
+- Choose how to persist and identify submission attempts. One candidate gives each web send a stable client-generated ID and atomically moves the submitted draft revision into a durable outgoing record. Retrying the web request returns the same record. A direct CLI submission also needs recoverable text and a way to match agent acknowledgements, independent of web draft synchronization.
