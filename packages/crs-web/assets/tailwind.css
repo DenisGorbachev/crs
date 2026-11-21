@@ -744,6 +744,11 @@ article[aria-current="true"]::before {
     padding-inline: .6rem;
   }
 }
+@media (display-mode: standalone) {
+  .thread-draft {
+    padding-bottom: max(1.5rem, calc(env(safe-area-inset-bottom) + .5rem));
+  }
+}
 @property --tw-outline-style {
   syntax: "*";
   inherits: false;

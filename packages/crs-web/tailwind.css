@@ -62,3 +62,6 @@ article[aria-current="true"]::before {
     #thread-transcript { padding-top: .5rem; }
     .thread-draft { padding-inline: .6rem; }
 }
+@media (display-mode: standalone) {
+    .thread-draft { padding-bottom: max(1.5rem, calc(env(safe-area-inset-bottom) + .5rem)); }
+}
