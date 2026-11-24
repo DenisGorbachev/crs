@@ -1,5 +1,7 @@
 # CRS architecture
 
+NOTE: This document is outdated. Update it to use AHP instead of ACP.
+
 ## Clients and backend
 
 The Dioxus web UI and the native CRS CLI access the same agent sessions through an ACP endpoint. The CLI connects directly to the endpoint for agent operations. The web application also provides a draft service for editing across devices. Its clients send draft commands over HTTP and receive ownership and sync updates over Server-Sent Events (SSE). The CLI has no dependency on that service or on Dioxus.
@@ -10,10 +12,10 @@ The agent is authoritative for its transcript and turn status. The web backend u
 
 Each named source in the application configuration identifies an adapter and where it runs. Session and draft identifiers in CRS include the source because two hosts can have the same agent session ID. One persistent worker per source owns the adapter's stdio connection, uses the official Rust `agent-client-protocol` SDK, and negotiates ACP v1. The worker's lifetime is independent of the Dioxus process and individual CLI invocations. Disconnecting the last UI client during a turn leaves that turn running. An interaction that needs a client can still require someone to reconnect and respond.
 
-| Adapter location | How the worker connects |
-| --- | --- |
-| On the CRS host | Launch the adapter directly and connect over stdio. |
-| On a remote host | Run the adapter with `ssh -T` and use its stdio. |
+| Adapter location          | How the worker connects                                  |
+|---------------------------|----------------------------------------------------------|
+| On the CRS host           | Launch the adapter directly and connect over stdio.      |
+| On a remote host          | Run the adapter with `ssh -T` and use its stdio.         |
 | In a local Docker sandbox | Run the adapter with `docker exec -i` and use its stdio. |
 
 The client-facing ACP endpoint and the worker-to-adapter stdio stream are separate connections. A new client attaches to the existing worker for that source. The endpoint routes requests and responses to the correct client, distributes session updates to attached clients, and routes each permission decision once. A reconnecting client can recover history and current activity before following further updates.

@@ -14,4 +14,4 @@
 - Use `openai_dive` with model `gpt-transcribe`.
 - Annotate `Command.openai_api_key` with `#[arg(long, env = "OPENAI_API_KEY")]`.
 - Define `Config.transcribe_params: TranscribeParams` for optional, nondeprecated request params supported by `gpt-transcribe`, including `prompt`, `languages`, `keywords`.
-- Set `transcribe_params.languages = ["en"]` in `fixtures/crs-web/local.toml`.
+- Set `transcribe_params.languages = ["en"]` in `../../fixtures/crs-web/local.toml`.
