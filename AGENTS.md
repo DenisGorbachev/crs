@@ -686,7 +686,9 @@ use nu_path::{RelativePath, RelativePathBuf};
 - Must have workspace members:
   - `packages/crs-cli`
   - `packages/crs-cli-spec`
-  - `packages/crs-web`
+  - `packages/crs-web-ahp`
+  - `packages/crs-web-codex`
+  - `packages/crs-web-common`
   - `packages/crs-web-spec`
 
 #### package crs-cli-spec
