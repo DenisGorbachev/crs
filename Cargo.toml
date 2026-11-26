@@ -57,7 +57,7 @@ arithmetic_side_effects = "deny"
 # codex-tui requires base64 >= 0.22.1.
 base64 = "0.22.0"
 eventsource-stream = "0.2.0"
-openai_dive = { git = "https://github.com/DenisGorbachev/openai-dive", rev = "bd7a16dafb4657fd24ff449953b3415cf062ff16", default-features = false, features = ["reqwest", "rustls-tls"] }
+openai_dive = { git = "https://github.com/DenisGorbachev/openai-dive", branch = "private", default-features = false, features = ["reqwest", "rustls-tls"] }
 secrecy = "0.10.0"
 dioxus-primitives = { git = "https://github.com/DioxusLabs/components", rev = "9a758255ea26e2b20c8cecf4c1c946feb9e71da7" }
 derive_more = { version = "2.1.0", features = ["deref", "deref_mut"] }
