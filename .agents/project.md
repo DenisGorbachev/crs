@@ -34,6 +34,10 @@ use nu_path::{RelativePath, RelativePathBuf};
   - `packages/crs-web-common`
   - `packages/crs-web-spec`
 
+## E2E tests
+
+- Must be run only if necessary (each run spends LLM quota).
+
 ## package crs-cli-spec
 
 ## package crs-cli
