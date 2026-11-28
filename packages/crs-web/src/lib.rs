@@ -1,5 +1,3 @@
-#![cfg(feature = "server")]
-
 mod app;
 pub use app::*;
 mod message_form;

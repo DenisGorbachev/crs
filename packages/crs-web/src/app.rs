@@ -1,12 +1,8 @@
-use crate::{Config, Item, ItemContent, ItemGroup, ItemSize, ItemTitle, Route, SharedServer, ThreadSummary, UrlSegment};
-use axum::Extension;
+use crate::{Config, Item, ItemContent, ItemGroup, ItemSize, ItemTitle, Route, UrlSegment};
 use dioxus::fullstack::FullstackContext;
 use dioxus::prelude::*;
 use dioxus::router::ParseRouteError;
-use errgonomic::ErrorDisplayer;
 use std::sync::Arc;
-use tokio::task::spawn_blocking;
-use tracing::error;
 
 #[component]
 pub fn App() -> Element {
@@ -24,20 +20,6 @@ pub fn App() -> Element {
             Router::<Route> {}
         }
     }
-}
-
-#[get("/api/threads", Extension(server): Extension<SharedServer>)]
-pub async fn list_threads() -> Result<Vec<ThreadSummary>, ServerFnError> {
-    let (store, config) = {
-        let server = server.lock().await;
-        (server.threads.clone(), server.config.clone())
-    };
-    match spawn_blocking(move || store.list(&config, config.codex_app_servers.keys().map(String::as_str))).await {
-        Ok(Ok(threads)) => return Ok(threads),
-        Ok(Err(error)) => error!(error = %ErrorDisplayer(&error), "failed to list saved threads"),
-        Err(error) => error!(%error, "thread storage task failed"),
-    }
-    Err(ServerFnError::new("Could not read synchronized threads"))
 }
 
 #[component]

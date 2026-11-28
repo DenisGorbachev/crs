@@ -2376,78 +2376,37 @@ exclude.workspace = true
 [lints]
 workspace = true
 
-[[bin]]
-name = "crs-web"
-path = "src/main.rs"
-required-features = ["server"]
-
-[features]
-default = ["server"]
-server = [
-    "dioxus/server",
-    "dep:axum",
-    "dep:base64",
-    "dep:clap",
-    "dep:codex-app-server-client",
-    "dep:codex-app-server-protocol",
-    "dep:codex-utils-absolute-path",
-    "dep:codex-utils-home-dir",
-    "dep:derive_more",
-    "dep:dioxus",
-    "dep:dioxus-primitives",
-    "dep:errgonomic",
-    "dep:eventsource-stream",
-    "dep:fjall",
-    "dep:futures",
-    "dep:openai_dive",
-    "dep:pulldown-cmark",
-    "dep:secrecy",
-    "dep:serde",
-    "dep:serde_json",
-    "dep:thiserror",
-    "dep:time",
-    "dep:tokio",
-    "dep:toml",
-    "dep:tracing",
-    "dep:tree-sitter",
-    "dep:tree-sitter-javascript",
-    "dep:tree-sitter-python",
-    "dep:tree-sitter-rust",
-    "dep:url",
-    "dep:uuid",
-]
-
 [dependencies]
-axum = { workspace = true, optional = true }
-base64 = { workspace = true, optional = true }
-clap = { workspace = true, optional = true }
-codex-app-server-client = { workspace = true, optional = true }
-codex-app-server-protocol = { workspace = true, optional = true }
-codex-utils-absolute-path = { workspace = true, optional = true }
-codex-utils-home-dir = { workspace = true, optional = true }
-derive_more = { workspace = true, optional = true }
-dioxus = { workspace = true, features = ["router", "document", "ssr"], optional = true }
-dioxus-primitives = { workspace = true, optional = true }
-errgonomic = { workspace = true, optional = true }
-eventsource-stream = { workspace = true, optional = true }
-fjall = { workspace = true, optional = true }
-futures = { workspace = true, optional = true }
-openai_dive = { workspace = true, optional = true }
-pulldown-cmark = { workspace = true, optional = true }
-secrecy = { workspace = true, optional = true }
-serde = { workspace = true, features = ["derive"], optional = true }
-serde_json = { workspace = true, optional = true }
-thiserror = { workspace = true, optional = true }
-time = { workspace = true, optional = true }
-tokio = { workspace = true, features = ["signal", "sync", "time"], optional = true }
-toml = { workspace = true, optional = true }
-tracing = { workspace = true, optional = true }
-tree-sitter = { workspace = true, optional = true }
-tree-sitter-javascript = { workspace = true, optional = true }
-tree-sitter-python = { workspace = true, optional = true }
-tree-sitter-rust = { workspace = true, optional = true }
-url = { workspace = true, optional = true }
-uuid = { workspace = true, features = ["v4"], optional = true }
+axum.workspace = true
+base64.workspace = true
+clap.workspace = true
+codex-app-server-client.workspace = true
+codex-app-server-protocol.workspace = true
+codex-utils-absolute-path.workspace = true
+codex-utils-home-dir.workspace = true
+derive_more.workspace = true
+dioxus = { workspace = true, features = ["router", "document", "ssr", "server"] }
+dioxus-primitives.workspace = true
+errgonomic.workspace = true
+eventsource-stream.workspace = true
+fjall.workspace = true
+futures.workspace = true
+openai_dive.workspace = true
+pulldown-cmark.workspace = true
+secrecy.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+thiserror.workspace = true
+time.workspace = true
+tokio = { workspace = true, features = ["signal", "sync", "time"] }
+toml.workspace = true
+tracing.workspace = true
+tree-sitter.workspace = true
+tree-sitter-javascript.workspace = true
+tree-sitter-python.workspace = true
+tree-sitter-rust.workspace = true
+url.workspace = true
+uuid = { workspace = true, features = ["v4"] }
 ```
 
 ### packages/crs-cli-spec/src/lib.rs
@@ -2511,8 +2470,6 @@ fn verify_cli() {
 ### packages/crs-web/src/lib.rs
 
 ```rust
-#![cfg(feature = "server")]
-
 mod app;
 pub use app::*;
 mod message_form;
